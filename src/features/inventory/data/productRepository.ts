@@ -2,7 +2,7 @@ import { getDatabase } from "../../../core/db/database";
 
 export interface Product {
     id: string;
-    sku: string;
+    stock: number;
     name: string;
     category: string | null;
     unit_price: number;
@@ -27,7 +27,7 @@ export async function getProductById(id: string): Promise<Product | null> {
 export async function insertProduct(product: Product): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(
-        `insert into products (id, sku, name, category, unit_price, active) values (?, ?, ?, ?, ?, ?)`,
-        [product.id, product.sku, product.name, product.category, product.unit_price, product.active]
+        `insert into products (id, stock, name, category, unit_price, active) values (?, ?, ?, ?, ?, ?)`,
+        [product.id, product.stock, product.name, product.category, product.unit_price, product.active]
     )
 }

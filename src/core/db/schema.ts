@@ -1,7 +1,7 @@
 export const SCHEMA_SQL = `
 create table if not exists products (
     id text primary key,
-    sku text unique not null,
+    stock integer unique not null,
     name text not null,
     category text,
     unit_price real not null,
