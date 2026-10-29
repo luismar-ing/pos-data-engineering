@@ -1,0 +1,8 @@
+# Global (cada subproyecto mantiene además su propio .gitignore)
+node_modules/
+dist/
+.env
+.env*.local
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
