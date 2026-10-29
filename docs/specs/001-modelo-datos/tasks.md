@@ -1,9 +1,9 @@
 # SPEC-001 — Tareas
 
-Ramas: `spec/001-modelo-datos` en ambos repos.
+Rama: `spec/001-modelo-datos` (monorepo).
 
 ### pos-app
-- [ ] **T1** [app] Commitear o descartar el cambio pendiente en `index.ts` y limpiar imports de `App.tsx` — *Verificación:* `git status` limpio
+- [ ] **T1** [app] Limpiar imports sin uso de `App.tsx` (el cambio de `index.ts` ya se commiteó en `be8a1c8`) — *Verificación:* `tsc --noEmit` ok
 - [ ] **T2** [app] Crear `core/db/migrations.ts` con la migración 1 del plan — *Verificación:* `tsc --noEmit` ok
 - [ ] **T3** [app] Reescribir `database.ts`: `foreign_keys = ON`, aplicar migraciones por `user_version` en transacción; borrar `schema.ts` (depende de T2) — *Verificación:* CA-1, CA-2
 - [ ] **T4** [app] Actualizar `productRepository.ts` a APIs async y `unit_price_cents` (depende de T3) — *Verificación:* CA-3

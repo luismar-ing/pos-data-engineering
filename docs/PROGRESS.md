@@ -8,7 +8,11 @@ Leyenda: ✅ hecho · 🟡 parcial / con problemas · 🔴 roto · ⬜ no inicia
 
 El proyecto tiene el esqueleto de ambos repos, conexión a bases de datos y un primer esbozo de las rutas del backend. Aún no hay ninguna funcionalidad usable de punta a punta. **El esquema SQLite de la app tiene errores de sintaxis que hacen fallar la apertura de la BD** (TD-001 a TD-003), y el endpoint de leases calcula la cuota pero no congela stock, que es el núcleo del proyecto (TD-007).
 
-## pos-app (último commit `f1327f4`, 2026-09-29)
+## Repositorio
+
+Monorepo en `POS_DE_APP/` desde 2026-10-29 (ADR-0004), con el historial de ambos repos anteriores. ⬜ Pendiente: conectarlo a un repo nuevo en GitHub y archivar `POS-DE-app` y `pos-de-backend`.
+
+## pos-app
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -25,9 +29,7 @@ El proyecto tiene el esqueleto de ambos repos, conexión a bases de datos y un p
 | Recibo QR | ⬜ | |
 | Tests | ⬜ | |
 
-Cambio sin commitear: `index.ts` (solo se borraron comentarios).
-
-## pos-backend (último commit `1104806`, 2026-09-29)
+## pos-backend
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -49,6 +51,5 @@ Cambio sin commitear: `index.ts` (solo se borraron comentarios).
 
 ## Decisiones pendientes del usuario
 
-1. ¿Versionar `docs/` en git? Hoy la carpeta raíz `POS_DE_APP/` no es repo. Opciones: repo de docs propio, o mover `docs/` a uno de los dos repos.
-2. Preguntas abiertas de SPEC-001 (evento por venta vs. por línea; dinero en centavos).
-3. ¿La tasa de consumo para el lease es por dispositivo (como dice el planteamiento) o global por producto (como está hoy)? → SPEC-005.
+1. Preguntas abiertas de SPEC-001 (evento por venta vs. por línea; dinero en centavos).
+2. ¿La tasa de consumo para el lease es por dispositivo (como dice el planteamiento) o global por producto (como está hoy)? → SPEC-005.

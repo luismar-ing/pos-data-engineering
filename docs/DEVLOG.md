@@ -12,6 +12,12 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-29 — Migración a monorepo
+**Spec:** —
+**Hecho:** App y backend unidos en un solo repo en `POS_DE_APP/` con `git subtree add`, conservando los 11 commits originales. Se commiteó antes el cambio pendiente de `pos-app/index.ts` (`be8a1c8`). `node_modules`, `.env` y `.expo` se trasladaron sin cambios; contenido verificado idéntico al original. Carpetas vacías de `pos-app/src` recreadas a mano (git no versiona carpetas vacías).
+**Decisiones:** Monorepo sin npm workspaces (ADR-0004).
+**Bloqueos / pendientes:** Crear el repo nuevo en GitHub, hacer push y archivar los dos repos anteriores. Borrar el respaldo `Aplicaciones_Moviles/_respaldo_repos_2026-10-29/` cuando se confirme que todo funciona.
+
 ## 2026-10-29 — Revisión de avances y adopción de SDD
 **Spec:** —
 **Hecho:** Revisión completa de `pos-app` y `pos-backend` contra el planteamiento. Creación de la estructura de documentación SDD (`docs/`), plantillas de spec y redacción de SPEC-001. Registro de 18 hallazgos en `TECH_DEBT.md`.

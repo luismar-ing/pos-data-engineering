@@ -1,12 +1,14 @@
 # POS-DE — Instrucciones para agentes
 
-Este directorio agrupa dos repos y la documentación del proyecto:
+Monorepo (un solo repo git en esta carpeta, ver `docs/adr/0004-monorepo.md`):
 
-| Carpeta | Qué es | Repo |
-|---|---|---|
-| `pos-app/` | App móvil (Expo 57 + React Native + expo-sqlite + Zustand) | github.com/luismar-ing/POS-DE-app |
-| `pos-backend/` | API central (Node + Express 5 + PostgreSQL 16) | github.com/luismar-ing/pos-de-backend |
-| `docs/` | Documentación SDD (visión, arquitectura, specs, progreso) | — |
+| Carpeta | Qué es |
+|---|---|
+| `pos-app/` | App móvil (Expo 57 + React Native + expo-sqlite + Zustand) |
+| `pos-backend/` | API central (Node + Express 5 + PostgreSQL 16) |
+| `docs/` | Documentación SDD (visión, arquitectura, specs, progreso) |
+
+Cada subproyecto tiene su propio `package.json` y `node_modules`: ejecutar `npm` dentro de su carpeta, no en la raíz.
 
 ## Flujo de trabajo: Spec-Driven Development (SDD)
 
