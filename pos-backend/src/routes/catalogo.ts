@@ -5,7 +5,7 @@ export const catalogoRouter = Router();
 
 catalogoRouter.get('/', async (req, res) => {
     const result = await pool.query(
-        `select id, name, category, unit_price, active from products where active = true order by name`
+        `select id, name, category, unit_price_cents, active from products where active = true order by name`
     );
     res.json(result.rows)
 })

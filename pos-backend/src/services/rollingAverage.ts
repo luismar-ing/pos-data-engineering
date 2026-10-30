@@ -11,15 +11,16 @@ export async function calculateLeaseQty(productId: string): Promise<number> {
         [productId]
     );
     const remainingStock = stockResult.rows[0]?.central_stock ?? 0;
-    
+
     if (remainingStock <= 0) {
         return 0;
     }
-    
+
     const result = await pool.query(
-        `select coalesce(sum(quantity), 0) as total_units
-        from sale_events
-        where product_id = $1 and created_at > now() - ($2 * interval '1 minute')`,
+        `select coalesce(sum(si.quantity), 0) as total_units
+        from sale_items si
+        join sales s on s.id = si.sale_id
+        where si.product_id = $1 and s.created_at > now() - ($2 * interval '1 minute')`,
         [productId, SESSION_MINUTES]
     );
 
