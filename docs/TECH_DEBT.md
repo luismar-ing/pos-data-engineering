@@ -9,14 +9,9 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-007 | 🔴 | backend | `routes/prestamos.ts` | El lease se calcula pero **no se congela** en `central_stock` ni se persiste: dos dispositivos pueden recibir el mismo stock ⇒ sobreventa | SPEC-005 |
 | TD-008 | 🟠 | backend | `services/rollingAverage.ts` | Tasa de consumo global por producto, no por dispositivo (el planteamiento pide por dispositivo). Lectura de stock y cálculo sin bloqueo ⇒ condición de carrera | SPEC-005 |
 | TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, descontar stock/lease, respuesta por evento | SPEC-008 |
-| TD-011 | 🟡 | backend | `package.json`, `tsconfig.json` | Sin scripts `dev`/`build`/`start`; `ts-node-dev` y `tsx` duplicados; sin `rootDir`/`outDir`; opción `jsx` innecesaria | SPEC-002 |
-| TD-012 | ⚪ | backend | `src/index.ts` | `PORT` sin valor por defecto; sin manejador de errores ni `/health` | SPEC-002 |
-| TD-013 | 🟡 | ambos | — | No hay pruebas automatizadas en los repos (SPEC-001 se verificó con scripts externos) | SPEC-002 / cada spec |
-| TD-014 | 🟡 | backend | `db/migrations/` | Migraciones SQL numeradas pero se aplican a mano; falta runner con tabla `schema_migrations`. (App: resuelto con `PRAGMA user_version`) | SPEC-002 |
+| TD-013 | 🟡 | app | — | No hay pruebas automatizadas en la app (backend: resuelto en SPEC-002) | cada spec de app |
 | TD-016 | ⚪ | app | `sessionStore.ts` | `addToCart` duplica la línea en vez de sumar cantidad; `isOnline` no está conectado al estado real de red | SPEC-006 / SPEC-007 |
-| TD-018 | ⚪ | backend | `test-db.ts` | Imprime `DB_URL` completa (incluye contraseña) en consola | SPEC-002 |
 | TD-019 | ⚪ | backend | `devices` / `sales.device_id` | `sales.device_id` no tiene FK a `devices` porque aún no hay registro de dispositivos | SPEC-003 |
-| TD-020 | 🟠 | backend | `src/db/pool.ts` | El `Pool` de `pg` no tiene `pool.on('error')`: si Postgres corta una conexión inactiva (reinicio de Docker, `drop database`), el proceso entero se cae con "Unhandled 'error' event". Detectado al verificar SPEC-001 | SPEC-002 |
 
 ## Riesgos de diseño
 
@@ -40,3 +35,10 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-014 (app) | Esquema local sin versionar | SPEC-001 (`PRAGMA user_version`) | 2026-10-30 |
 | TD-015 | Imports sin uso / `index.ts` sin commitear | SPEC-001 / `be8a1c8` | 2026-10-30 |
 | TD-017 | Montos como `real` | SPEC-001 (centavos enteros) | 2026-10-30 |
+| TD-011 | Sin scripts `dev`/`build`/`start`; deps duplicadas; `tsconfig` sin `outDir` | SPEC-002 | 2026-10-30 |
+| TD-012 | `PORT` sin defecto; sin manejo de errores ni `/health` | SPEC-002 (`config.ts`, `errors.ts`, `/health`) | 2026-10-30 |
+| TD-013 (backend) | Sin pruebas automatizadas | SPEC-002 (`npm test`, 21 pruebas) | 2026-10-30 |
+| TD-014 (backend) | Migraciones aplicadas a mano | SPEC-002 (`npm run db:migrate`, ADR-0006) | 2026-10-30 |
+| TD-018 | `test-db.ts` imprimía la contraseña | SPEC-002 (archivo eliminado) | 2026-10-30 |
+| TD-020 | El proceso se caía si Postgres cortaba una conexión | SPEC-002 (`pool.on('error')`) | 2026-10-30 |
+| TD-021 | `npm audit`: `body-parser` < 2.4 (alta) y `qs` < 6.17 (moderada) | SPEC-002 (`npm audit fix`: body-parser 2.4.0, qs 6.17.1) | 2026-10-30 |

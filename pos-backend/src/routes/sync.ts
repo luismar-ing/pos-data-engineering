@@ -1,64 +1,46 @@
 import { Router } from "express";
+import { z } from "zod";
 import { pool } from "../db/pool.js";
 
 export const syncRouter = Router();
 
 // Forma del evento definida en SPEC-001 (igual al payload de event_log en la app).
-interface SaleItemPayload {
-    id: string;
-    sale_id: string;
-    product_id: string;
-    quantity: number;
-    unit_price_cents: number;
-}
-
-interface SaleCreatedEvent {
-    event_id: string;
-    event_type: 'sale_created';
-    device_id: string;
-    created_at: string;
-    payload: {
-        sale: {
-            id: string;
-            device_id: string;
-            total_cents: number;
-            payment_method: string;
-            created_at: string;
-        };
-        items: SaleItemPayload[];
-    };
-}
-
 // Validación mínima de forma. La validación completa y los lotes son de SPEC-008.
-function isSaleCreatedEvent(value: unknown): value is SaleCreatedEvent {
-    const e = value as SaleCreatedEvent | null;
-    return (
-        typeof e === 'object' && e !== null &&
-        e.event_type === 'sale_created' &&
-        typeof e.event_id === 'string' &&
-        typeof e.payload?.sale === 'object' && e.payload.sale !== null &&
-        e.payload.sale.id === e.event_id &&
-        Array.isArray(e.payload.items) && e.payload.items.length > 0 &&
-        e.payload.items.every((item) => item?.sale_id === e.event_id)
-    );
-}
+const saleCreatedEventSchema = z.object({
+    event_id: z.uuid(),
+    event_type: z.literal('sale_created'),
+    device_id: z.string(),
+    created_at: z.iso.datetime({ offset: true }),
+    payload: z.object({
+        sale: z.object({
+            id: z.uuid(),
+            device_id: z.string(),
+            total_cents: z.number().int(),
+            payment_method: z.string(),
+            created_at: z.iso.datetime({ offset: true }),
+        }),
+        items: z.array(z.object({
+            id: z.uuid(),
+            sale_id: z.uuid(),
+            product_id: z.uuid(),
+            quantity: z.number().int(),
+            unit_price_cents: z.number().int(),
+        })).min(1),
+    }),
+}).refine((e) => e.payload.sale.id === e.event_id, { message: 'sale.id debe ser igual a event_id', path: ['payload', 'sale', 'id'] })
+  .refine((e) => e.payload.items.every((item) => item.sale_id === e.event_id), { message: 'items[].sale_id debe ser igual a event_id', path: ['payload', 'items'] });
+
+const syncBatchSchema = z.object({ events: z.array(saleCreatedEventSchema) });
 
 syncRouter.post('/events', async (req, res) => {
-    const events: unknown = req.body?.events;
-    if (!Array.isArray(events)) {
-        return res.status(400).json({ error: 'events debe ser un arreglo' });
-    }
-    const invalid = events.findIndex((event) => !isSaleCreatedEvent(event));
-    if (invalid !== -1) {
-        return res.status(400).json({ error: `evento inválido en la posición ${invalid}` });
-    }
+    const { events } = syncBatchSchema.parse(req.body);
 
     let inserted = 0;
     let duplicated = 0;
 
     const client = await pool.connect();
     try {
-        for (const event of events as SaleCreatedEvent[]) {
+        for (const event of events) {
             const { sale, items } = event.payload;
             await client.query('begin');
             try {

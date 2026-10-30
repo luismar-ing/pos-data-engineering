@@ -12,6 +12,15 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-30 — SPEC-002: infraestructura backend
+**Spec:** SPEC-002
+**Hecho:** Spec, plan y tareas aprobados (P1–P5 según recomendación). Backend: scripts `dev`/`build`/`start`/`typecheck`/`test`/`db:migrate`/`db:seed`; `config.ts` exige `DB_URL`; `pool.on('error')` (TD-020); runner de migraciones con `schema_migrations` y línea base para BD previas; semilla repetible; `createApp()` separado del arranque; errores `{ error: { code, message, details? } }`; `GET /health`; validación con `zod` en `/prestamos/request` y `/sync/events`; 21 pruebas con `node:test` sobre `posde_test`. Docker ya no aplica migraciones: solo crea `posde_test`. Borrados `db/init.sh` y `test-db.ts`.
+**Verificación:** `npm test` 21/21 (varias veces seguidas); `typecheck` y `build` ok. Manual: CA-1 (`dev` recarga), CA-2 (sin `DB_URL` ⇒ mensaje y salida 1), CA-3 (BD vieja ⇒ registra 0001–0003, luego "nada pendiente"), CA-5 (`docker stop` ⇒ 503 en 152 ms), CA-8 (el pool registra el corte, `/catalogo` 200 tras `docker start`), CA-10 (logs sin contraseña), CA-11 en un Postgres temporal (puerto 5499) para no borrar la BD de desarrollo. RF-4: `pg_dump -s` de `posde` (vieja) y `posde_test` (nueva) idénticos.
+**Revisión (cavecrew-reviewer):** corregido: 413/415 del parser daban 500 (ahora `PAYLOAD_TOO_LARGE`/`BAD_REQUEST`); guarda `headersSent`; tabla de control + línea base en una transacción; rutas de migraciones relativas al módulo, no al cwd; `connectionTimeoutMillis: 2000` en el pool; ids `z.uuid()` y fechas `z.iso.datetime()` en sync; `test/env.ts` exige BD `*_test`; Postgres publicado solo en `127.0.0.1`. Descartado: `refine` con payload incompleto (zod 4 no lo ejecuta si falla la base; probado).
+**Decisiones:** ADR-0006 (formato de errores + runner propio). Nueva dependencia: `zod` 4; se quitó `ts-node-dev`.
+**Pendientes resueltos al cierre:** contenedor recreado (`127.0.0.1:5434`, datos conservados); `posde_test` creada; `npm audit fix` (body-parser 2.4.0, qs 6.17.1, 0 vulnerabilidades, TD-021); 21/21 pruebas tras el cambio.
+**Bloqueos / pendientes:** Otros volúmenes de Docker anteriores a SPEC-002 necesitan una vez `docker exec pos-de-db createdb -U postgres posde_test`.
+
 ## 2026-10-30 — Cierre de SPEC-001
 **Spec:** SPEC-001
 **Hecho:** T11: la app abre en el teléfono con Expo Go (SDK 58), muestra las 4 pestañas y no hay errores de BD. Todos los criterios CA-1..CA-6 verificados; spec en Done.

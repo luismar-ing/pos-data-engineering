@@ -1,6 +1,8 @@
 # Infraestructura local del proyecto POS-DE.
 # Uso (desde la raíz del repo):  docker compose up -d
 # Reiniciar la BD desde cero:    docker compose down -v && docker compose up -d
+#                                 cd pos-backend && npm run db:migrate && npm run db:seed
+# Volumen creado antes de SPEC-002:  docker exec pos-de-db createdb -U postgres posde_test
 name: pos-de
 
 services:
@@ -14,13 +16,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-posde}
     ports:
       # 5434 para no chocar con el Postgres anterior (pos-backend, 5433)
-      - "${POSTGRES_PORT:-5434}:5432"
+      # Solo localhost: la BD usa credenciales por defecto
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - pos-de-pgdata:/var/lib/postgresql/data
-      # Solo se ejecuta al crear el volumen por primera vez: migraciones y luego datos semilla
-      - ./pos-backend/db/init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
-      - ./pos-backend/db/migrations:/migrations:ro
-      - ./pos-backend/db/seed:/seed:ro
+      # Solo al crear el volumen: crea posde_test. Esquema y semilla: npm run db:migrate / db:seed (SPEC-002)
+      - ./pos-backend/db/docker-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s

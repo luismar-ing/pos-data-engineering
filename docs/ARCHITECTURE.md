@@ -40,13 +40,21 @@ src/
 ### pos-backend
 ```
 src/
-  index.ts          # app Express + montaje de routers
-  db/pool.ts        # pool pg
-  routes/           # catalogo, prestamos, sync
+  index.ts          # arranque: createApp().listen(PORT)
+  app.ts            # createApp(): routers + notFound + errorHandler
+  config.ts         # lee .env; exige DB_URL, PORT por defecto 3000
+  http/errors.ts    # HttpError, notFound, errorHandler (forma única de error)
+  db/pool.ts        # pool pg (+ pool.on('error'))
+  db/migrate.ts     # migrate() y seed(); db/cli.ts los expone a npm
+  routes/           # health, catalogo, prestamos, sync
   services/         # rollingAverage, (leaseService*)
-db/migrations/      # NNNN_*.sql, se aplican en orden (runner en SPEC-002)
-db/init.sh, db/seed/ # inicialización del contenedor (compose.yaml en la raíz, puerto 5434)
+test/               # node:test vía tsx; usan la BD posde_test
+db/migrations/      # NNNN_*.sql, npm run db:migrate (tabla schema_migrations)
+db/seed/            # datos de desarrollo repetibles, npm run db:seed
+db/docker-init/     # solo crea posde_test al crear el volumen (compose.yaml, puerto 5434)
 ```
+
+Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck` · `test` · `db:migrate` · `db:seed`.
 
 ## 3. Flujos principales
 
@@ -87,7 +95,7 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 | `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` en `payload_json` |
 
 ### 4.2 PostgreSQL (backend) — `pos-backend/db/migrations/NNNN_*.sql`
-Por ahora se aplican a mano en orden; el runner de migraciones es de SPEC-002.
+Se aplican con `npm run db:migrate` (ADR-0006): una transacción por archivo, registradas en `schema_migrations(version, applied_at)`.
 
 | Tabla | Propósito |
 |---|---|
@@ -102,9 +110,10 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 
 | Método y ruta | Request | Response 200 | Errores | Estado |
 |---|---|---|---|---|
+| `GET /health` | — | `{ status: "ok", db: "up" }` | 503 `DB_UNAVAILABLE` (< 1 s) | ✅ implementado |
 | `GET /catalogo` | — | `[{ id, name, category, unit_price_cents, active }]` | 500 | ✅ implementado |
-| `POST /prestamos/request` | `{ product_id }` | `{ product_id, qty_total, created_at }` | 400 sin `product_id` | 🟡 calcula, no congela |
-| `POST /sync/events` | ver abajo | `{ received, inserted, duplicated }` | 400 si `events` no es arreglo o un evento no tiene la forma esperada | 🟡 transacción por evento; lotes y validación completa en SPEC-008 |
+| `POST /prestamos/request` | `{ product_id: uuid }` | `{ product_id, qty_total, created_at }` | 400 `VALIDATION_ERROR` | 🟡 calcula, no congela |
+| `POST /sync/events` | ver abajo | `{ received, inserted, duplicated }` | 400 `VALIDATION_ERROR` si `events` no es arreglo o un evento no tiene la forma esperada | 🟡 transacción por evento; lotes y validación completa en SPEC-008 |
 
 `POST /sync/events` — request:
 ```json
@@ -117,7 +126,22 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 ```
 El `payload` es exactamente el `payload_json` guardado en `event_log` de la app. Reenviar un evento ya recibido cuenta como `duplicated` y no inserta nada.
 
-Contratos pendientes de definir en sus specs: renovación/liberación de lease, registro de dispositivo, healthcheck.
+Errores (todas las rutas, ADR-0006):
+```json
+{ "error": { "code": "VALIDATION_ERROR", "message": "Datos de entrada inválidos",
+             "details": [ { "path": "product_id", "message": "Invalid UUID" } ] } }
+```
+| Código | HTTP | Cuándo |
+|---|---|---|
+| `VALIDATION_ERROR` | 400 | Cuerpo no cumple el esquema; `details` lista los campos |
+| `INVALID_JSON` | 400 | JSON mal formado |
+| `PAYLOAD_TOO_LARGE` | 413 | Cuerpo mayor que el límite de `express.json()` (100 kB) |
+| `BAD_REQUEST` | 4xx | Otro error del parser de cuerpo (p. ej. 415 codificación no soportada) |
+| `NOT_FOUND` | 404 | Ruta inexistente |
+| `DB_UNAVAILABLE` | 503 | `/health` sin BD |
+| `INTERNAL_ERROR` | 500 | Cualquier otro error; sin SQL ni trazas en la respuesta |
+
+Contratos pendientes de definir en sus specs: renovación/liberación de lease, registro de dispositivo.
 
 ## 6. Decisiones
 

@@ -1,14 +1,4 @@
-import express from 'express';
-import { prestamosRouter } from './routes/prestamos.js';
-import { syncRouter } from './routes/sync.js';
-import { catalogoRouter } from './routes/catalogo.js';
+import { createApp } from './app.js';
+import { config } from './config.js';
 
-const app = express();
-app.use(express.json());
-
-app.use('/prestamos', prestamosRouter);
-app.use('/sync', syncRouter);
-app.use('/catalogo', catalogoRouter);
-
-const PORT = process.env.PORT;
-app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));
+createApp().listen(config.port, () => console.log(`Backend corriendo en puerto ${config.port}`));
