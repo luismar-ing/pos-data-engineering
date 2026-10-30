@@ -45,7 +45,7 @@ src/
   routes/           # catalogo, prestamos, sync
   services/         # rollingAverage, (leaseService*)
 db/migrations/      # NNNN_*.sql, se aplican en orden (runner en SPEC-002)
-docker-compose.yml  # Postgres 16 en puerto 5433
+db/init.sh, db/seed/ # inicialización del contenedor (compose.yaml en la raíz, puerto 5434)
 ```
 
 ## 3. Flujos principales

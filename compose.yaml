@@ -1,0 +1,31 @@
+# Infraestructura local del proyecto POS-DE.
+# Uso (desde la raíz del repo):  docker compose up -d
+# Reiniciar la BD desde cero:    docker compose down -v && docker compose up -d
+name: pos-de
+
+services:
+  db:
+    image: postgres:16
+    container_name: pos-de-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-posde}
+    ports:
+      # 5434 para no chocar con el Postgres anterior (pos-backend, 5433)
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pos-de-pgdata:/var/lib/postgresql/data
+      # Solo se ejecuta al crear el volumen por primera vez: migraciones y luego datos semilla
+      - ./pos-backend/db/init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
+      - ./pos-backend/db/migrations:/migrations:ro
+      - ./pos-backend/db/seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pos-de-pgdata:

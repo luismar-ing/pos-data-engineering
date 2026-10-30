@@ -34,7 +34,7 @@ Monorepo en `POS_DE_APP/` desde 2026-10-29 (ADR-0004), con el historial de ambos
 | Módulo | Estado | Notas |
 |---|---|---|
 | Express 5 + TS (ESM) | 🟡 | Sin scripts `dev`/`build`/`start` (TD-011) |
-| Postgres 16 en Docker | ✅ | Puerto 5433 |
+| Postgres 16 en Docker | ✅ | `compose.yaml` en la raíz (contenedor `pos-de-db`, puerto 5434, BD `posde`); migraciones y semilla automáticas al crear el volumen |
 | Esquema (`db/schema.sql`) | 🟡 | Sin tabla de leases; `device_sessions` dudosa (TD-010); sin migraciones (TD-014) |
 | `GET /catalogo` | ✅ | |
 | `POST /prestamos/request` | 🟡 | Calcula con promedio móvil, **no congela ni persiste** (TD-007, TD-008) |
