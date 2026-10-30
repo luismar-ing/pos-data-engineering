@@ -12,6 +12,12 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-30 — Cierre de SPEC-001
+**Spec:** SPEC-001
+**Hecho:** T11: la app abre en el teléfono con Expo Go (SDK 58), muestra las 4 pestañas y no hay errores de BD. Todos los criterios CA-1..CA-6 verificados; spec en Done.
+**Decisiones:** —
+**Bloqueos / pendientes:** Fusionar el PR de `spec/001-modelo-datos`. Siguiente: redactar SPEC-002 (scripts, runner de migraciones, manejo de errores incl. TD-020, pruebas).
+
 ## 2026-10-30 — Actualización a Expo SDK 58
 **Spec:** SPEC-001 (desbloquea T11)
 **Hecho:** `pos-app` pasa de SDK 57 a 58 (React Native 0.88.1, React 19.3.0, expo-sqlite 58.0.14, expo-crypto 58.0.7). Sin cambios de código: las APIs usadas siguen iguales. `tsc` ok, `expo-doctor` 20/20, bundle de Android generado.

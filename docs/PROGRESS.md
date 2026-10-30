@@ -1,12 +1,12 @@
 # Progreso
 
-> Última revisión: **2026-10-30** · Fase actual: **0 — Cimientos** · Próximo paso: probar la app en emulador/dispositivo (SPEC-001/T11) y redactar SPEC-002.
+> Última revisión: **2026-10-30** · Fase actual: **0 — Cimientos** · Próximo paso: redactar SPEC-002 (infraestructura backend).
 
 Leyenda: ✅ hecho · 🟡 parcial / con problemas · 🔴 roto · ⬜ no iniciado
 
 ## Resumen
 
-SPEC-001 está implementada y verificada salvo la prueba en dispositivo: app y backend comparten el modelo de venta (cabecera + líneas, montos en centavos), el esquema local tiene migraciones versionadas y el backend recibe ventas sin duplicarlas. Postgres corre en un contenedor propio del proyecto. El núcleo del proyecto (congelar stock en leases, TD-007) sigue pendiente para SPEC-005.
+SPEC-001 está terminada y verificada, también en teléfono: app y backend comparten el modelo de venta (cabecera + líneas, montos en centavos), el esquema local tiene migraciones versionadas y el backend recibe ventas sin duplicarlas. Postgres corre en un contenedor propio del proyecto. El núcleo del proyecto (congelar stock en leases, TD-007) sigue pendiente para SPEC-005.
 
 ## Repositorio
 
@@ -18,7 +18,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 |---|---|---|
 | Proyecto Expo 58 + TS estricto | ✅ | Actualizado desde SDK 57 (ADR-0005) para usar Expo Go actual |
 | Navegación (4 tabs) | 🟡 | Venta, Inventario, Dashboard, Ajustes como placeholders |
-| BD local (`database.ts` + `migrations.ts`) | ✅ | Migraciones con `PRAGMA user_version`; la app espera a que la BD esté lista. Verificado con SQLite real; falta probar en dispositivo |
+| BD local (`database.ts` + `migrations.ts`) | ✅ | Migraciones con `PRAGMA user_version`; la app espera a que la BD esté lista. Probado en teléfono (Expo Go SDK 58) |
 | Repositorio de productos | ✅ | API async, `unit_price_cents` |
 | Registro de venta (`saleRepository`) | ✅ | Venta + líneas + evento `sale_created` en una transacción |
 | Generación de UUID | ✅ | `expo-crypto` |
@@ -46,7 +46,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 
 | Spec | Estado |
 |---|---|
-| SPEC-001 Modelo de datos unificado | 🚧 In Progress — todo hecho y verificado excepto T11 (abrir la app en dispositivo) |
+| SPEC-001 Modelo de datos unificado | 🏁 Done (2026-10-30) |
 | SPEC-002 … SPEC-010 | ⬜ Sin redactar (ver `specs/README.md`) |
 
 ## Decisiones pendientes del usuario

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | In Progress |
+| Estado | Done |
 | Fase | 0 — Cimientos |
 | Repos | app, backend |
 | Depende de | — |
@@ -58,3 +58,4 @@ Tener un modelo de datos único, documentado y versionado, que la app pueda crea
 |---|---|---|
 | 2026-10-29 | Creación | Revisión inicial del proyecto |
 | 2026-10-30 | Approved: P1–P4 aceptadas según recomendación | Decisión del usuario |
+| 2026-10-30 | Done: CA-1..CA-6 verificados; app probada en teléfono con SDK 58 (ADR-0005) | Cierre |

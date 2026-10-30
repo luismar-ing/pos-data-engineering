@@ -16,5 +16,5 @@ Rama: `spec/001-modelo-datos` (monorepo).
 - [x] **T9** [backend] Eliminar `db/schema.sql` (depende de T6)
 
 ### Cierre
-- [x] **T10** [docs] Actualizar `ARCHITECTURE.md` §4–5, `TECH_DEBT.md`, `PROGRESS.md` y `DEVLOG.md` (estado → Done al completar T11)
-- [ ] **T11** [app] Abrir la app en emulador/dispositivo y confirmar que no hay errores de BD en consola (CA-1 en dispositivo real)
+- [x] **T10** [docs] Actualizar `ARCHITECTURE.md` §4–5, `TECH_DEBT.md`, `PROGRESS.md` y `DEVLOG.md` (estado → Done)
+- [x] **T11** [app] Abrir la app en emulador/dispositivo y confirmar que no hay errores de BD en consola — *Verificación:* ✅ abre en teléfono con Expo Go (SDK 58): 4 pestañas, sin errores de BD (2026-10-30)
