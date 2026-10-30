@@ -15,13 +15,14 @@
 - Tablas y columnas en `snake_case`, tablas en plural.
 - IDs: UUID v4 en texto (app) / `uuid` (Postgres).
 - Fechas: ISO-8601 UTC (`text` en SQLite, `timestamptz` en Postgres).
-- Dinero: `numeric(10,2)` en Postgres; en la app guardar en **centavos enteros** para evitar errores de coma flotante (a confirmar en SPEC-001).
+- Dinero: **centavos enteros** (`*_cents integer`) en app y backend; se convierte a decimal solo en la UI (SPEC-001/P2).
 
 ## Git (monorepo, ver ADR-0004)
 - Un solo repo para `pos-app/`, `pos-backend/` y `docs/`.
 - Rama principal: `main`. Trabajo en ramas `spec/NNN-slug` (p. ej. `spec/001-modelo-datos`), aunque la spec toque app y backend.
 - Commits en español, imperativo, con referencia a la spec y, si aplica, el área: `SPEC-001(app): corrige sintaxis del esquema local`, `SPEC-001(backend): migración de ventas`.
 - Un PR por spec (o por fase grande de una spec). La descripción enlaza la spec.
+- Sin trailers de coautoría (`Co-Authored-By`) de herramientas de IA: el autor es solo el desarrollador.
 - Comandos `npm` siempre dentro de `pos-app/` o `pos-backend/`.
 
 ## Estructura de una funcionalidad (app)

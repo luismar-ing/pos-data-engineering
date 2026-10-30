@@ -6,35 +6,37 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Sev. | Repo | Ubicación | Problema | Se resuelve en |
 |---|---|---|---|---|---|
-| TD-001 | 🔴 | app | `src/core/db/schema.ts` | `create table if not exist` (falta la "s") en `sales`, `sale_items` y `event_log`: error de sintaxis al abrir la BD | SPEC-001 |
-| TD-002 | 🔴 | app | `schema.ts` → `sales` | Falta coma después de `total_amount real not null` | SPEC-001 |
-| TD-003 | 🔴 | app | `schema.ts` → `event_log` | Falta coma después de `created_at ...` (antes de `synced_at`) | SPEC-001 |
-| TD-004 | 🟠 | app | `schema.ts` → `products` | `stock integer unique not null`: `unique` impide que dos productos tengan el mismo stock | SPEC-001 |
-| TD-005 | 🟡 | app | `productRepository.ts` | `getAllProducts` usa `getAllSync` dentro de función async: bloquea el hilo JS | SPEC-001 |
-| TD-006 | 🟠 | ambos | esquemas | Modelo de venta distinto: app `sales`+`sale_items`, backend `sale_events` por producto; `stock_leases` usa `session_id` que el backend no conoce | SPEC-001 |
 | TD-007 | 🔴 | backend | `routes/prestamos.ts` | El lease se calcula pero **no se congela** en `central_stock` ni se persiste: dos dispositivos pueden recibir el mismo stock ⇒ sobreventa | SPEC-005 |
 | TD-008 | 🟠 | backend | `services/rollingAverage.ts` | Tasa de consumo global por producto, no por dispositivo (el planteamiento pide por dispositivo). Lectura de stock y cálculo sin bloqueo ⇒ condición de carrera | SPEC-005 |
-| TD-009 | 🟠 | backend | `routes/sync.ts` | Sin validación (`events` ausente ⇒ 500), insert fila por fila sin transacción, no descuenta stock ni lease | SPEC-008 |
-| TD-010 | ⚪ | backend | `db/schema.sql` | `device_sessions.event_id` sin propósito claro ni FK | SPEC-003 |
+| TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, descontar stock/lease, respuesta por evento | SPEC-008 |
 | TD-011 | 🟡 | backend | `package.json`, `tsconfig.json` | Sin scripts `dev`/`build`/`start`; `ts-node-dev` y `tsx` duplicados; sin `rootDir`/`outDir`; opción `jsx` innecesaria | SPEC-002 |
 | TD-012 | ⚪ | backend | `src/index.ts` | `PORT` sin valor por defecto; sin manejador de errores ni `/health` | SPEC-002 |
-| TD-013 | 🟡 | ambos | — | No hay pruebas automatizadas | SPEC-002 / cada spec |
-| TD-014 | 🟡 | ambos | esquemas | Sin migraciones: `create if not exists` no aplica cambios a BD existentes (app: usar `PRAGMA user_version`; backend: migraciones SQL numeradas) | SPEC-001 / SPEC-002 |
-| TD-015 | ⚪ | app | `App.tsx`, `index.ts` | Imports sin uso; cambio sin commitear en `index.ts` | SPEC-001 |
+| TD-013 | 🟡 | ambos | — | No hay pruebas automatizadas en los repos (SPEC-001 se verificó con scripts externos) | SPEC-002 / cada spec |
+| TD-014 | 🟡 | backend | `db/migrations/` | Migraciones SQL numeradas pero se aplican a mano; falta runner con tabla `schema_migrations`. (App: resuelto con `PRAGMA user_version`) | SPEC-002 |
 | TD-016 | ⚪ | app | `sessionStore.ts` | `addToCart` duplica la línea en vez de sumar cantidad; `isOnline` no está conectado al estado real de red | SPEC-006 / SPEC-007 |
-| TD-017 | 🟡 | app | `schema.ts` | Montos como `real` (coma flotante) | SPEC-001 |
 | TD-018 | ⚪ | backend | `test-db.ts` | Imprime `DB_URL` completa (incluye contraseña) en consola | SPEC-002 |
+| TD-019 | ⚪ | backend | `devices` / `sales.device_id` | `sales.device_id` no tiene FK a `devices` porque aún no hay registro de dispositivos | SPEC-003 |
+| TD-020 | 🟠 | backend | `src/db/pool.ts` | El `Pool` de `pg` no tiene `pool.on('error')`: si Postgres corta una conexión inactiva (reinicio de Docker, `drop database`), el proceso entero se cae con "Unhandled 'error' event". Detectado al verificar SPEC-001 | SPEC-002 |
 
 ## Riesgos de diseño
 
 | ID | Riesgo | Mitigación propuesta |
 |---|---|---|
 | R-01 | Un lease expira mientras el dispositivo sigue offline vendiendo | El servidor no libera la cuota de un lease hasta recibir sync o pasar un tiempo de gracia largo; definir en SPEC-005 |
-| R-02 | Reloj del dispositivo desfasado altera `created_at` y el promedio móvil | Guardar también `received_at` del servidor; usarlo para analítica central |
+| R-02 | Reloj del dispositivo desfasado altera `created_at` y el promedio móvil | Ya se guarda `sales.received_at` en el servidor; decidir en SPEC-005 cuál usar para el promedio móvil |
 | R-03 | Payload de recibo QR excede la capacidad del código | Definir formato compacto y límite de líneas en SPEC-010 |
 
 ## Resueltos
 
-| ID | Resuelto en | Fecha |
-|---|---|---|
-| — | — | — |
+| ID | Problema | Resuelto en | Fecha |
+|---|---|---|---|
+| TD-001 | `create table if not exist` en el esquema SQLite | SPEC-001 (migración v1) | 2026-10-30 |
+| TD-002 | Coma faltante en `sales` | SPEC-001 | 2026-10-30 |
+| TD-003 | Coma faltante en `event_log` | SPEC-001 | 2026-10-30 |
+| TD-004 | `unique` en `products.stock` | SPEC-001 (local ya no guarda stock) | 2026-10-30 |
+| TD-005 | `getAllSync` dentro de función async | SPEC-001 | 2026-10-30 |
+| TD-006 | Modelo de venta distinto entre app y backend | SPEC-001 (`sales` + `sale_items` en ambos) | 2026-10-30 |
+| TD-010 | `device_sessions.event_id` sin propósito | SPEC-001 (reemplazada por `devices`) | 2026-10-30 |
+| TD-014 (app) | Esquema local sin versionar | SPEC-001 (`PRAGMA user_version`) | 2026-10-30 |
+| TD-015 | Imports sin uso / `index.ts` sin commitear | SPEC-001 / `be8a1c8` | 2026-10-30 |
+| TD-017 | Montos como `real` | SPEC-001 (centavos enteros) | 2026-10-30 |

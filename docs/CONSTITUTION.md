@@ -16,7 +16,7 @@ Principios no negociables. Toda spec y todo plan debe cumplirlos; si una spec ne
 
 | Capa | Tecnología | Cambiar requiere ADR |
 |---|---|---|
-| App | Expo SDK 57, React Native 0.86, React 19, TypeScript estricto | Sí |
+| App | Expo SDK 58, React Native 0.88, React 19.3, TypeScript estricto (ver ADR-0005) | Sí |
 | Estado app | Zustand | Sí |
 | BD local | expo-sqlite | Sí |
 | Navegación | React Navigation 7 (bottom tabs) | No |
