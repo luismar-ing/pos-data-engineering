@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Draft |
+| Estado | Approved |
 | Fase | 0 — Cimientos |
 | Repos | app, backend |
 | Depende de | — |
 | Creada | 2026-10-29 |
-| Actualizada | 2026-10-29 |
+| Actualizada | 2026-10-30 |
 
 ## 1. Contexto y problema
 El esquema SQLite de la app no se puede ejecutar (errores de sintaxis, TD-001..003) y tiene restricciones incorrectas (TD-004). Además, la app y el backend modelan la venta de forma distinta (TD-006): la app guarda venta + líneas y el backend recibe un evento por producto. Sin un modelo común, ninguna spec posterior (venta, leases, sync) puede definirse con seguridad.
@@ -48,12 +48,13 @@ Tener un modelo de datos único, documentado y versionado, que la app pueda crea
 - Pantallas de venta (SPEC-007).
 
 ## 8. Preguntas abiertas
-- [ ] **P1** ¿Evento por venta (con líneas en el payload) o evento por línea? *Recomendación: por venta (RF-4), más simple de hacer idempotente y atómico.*
-- [ ] **P2** ¿Montos en centavos enteros en la app? *Recomendación: sí (`integer`), convertir solo en la UI.*
-- [ ] **P3** ¿`stock_leases` local se liga a `device_id` (fijo) o a `session_id` (por turno)? *Recomendación: `device_id` + `lease_id` emitido por el servidor; la sesión se define en SPEC-003.*
-- [ ] **P4** ¿Se elimina la tabla `sale_events` del backend o se mantiene como vista/derivada para el promedio móvil? *Recomendación: reemplazar por `sales` + `sale_items`, y el promedio móvil consulta `sale_items`.*
+- [x] **P1** ¿Evento por venta (con líneas en el payload) o evento por línea? *Recomendación: por venta (RF-4), más simple de hacer idempotente y atómico.*
+- [x] **P2** ¿Montos en centavos enteros en la app? *Recomendación: sí (`integer`), convertir solo en la UI.*
+- [x] **P3** ¿`stock_leases` local se liga a `device_id` (fijo) o a `session_id` (por turno)? *Recomendación: `device_id` + `lease_id` emitido por el servidor; la sesión se define en SPEC-003.*
+- [x] **P4** ¿Se elimina la tabla `sale_events` del backend o se mantiene como vista/derivada para el promedio móvil? *Recomendación: reemplazar por `sales` + `sale_items`, y el promedio móvil consulta `sale_items`.*
 
 ## 9. Cambios
 | Fecha | Cambio | Motivo |
 |---|---|---|
 | 2026-10-29 | Creación | Revisión inicial del proyecto |
+| 2026-10-30 | Approved: P1–P4 aceptadas según recomendación | Decisión del usuario |

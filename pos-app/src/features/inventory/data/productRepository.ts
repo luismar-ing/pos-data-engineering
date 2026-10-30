@@ -1,33 +1,32 @@
-import { getDatabase } from "../../../core/db/database";
+import { getDatabase } from '../../../core/db/database';
 
 export interface Product {
-    id: string;
-    stock: number;
-    name: string;
-    category: string | null;
-    unit_price: number;
-    active: number;
+  id: string;
+  name: string;
+  category: string | null;
+  unit_price_cents: number;
+  active: number;
 }
 
 export async function getAllProducts(): Promise<Product[]> {
-    const db = await getDatabase();
-    return db.getAllSync<Product>(
-        'select * from products where active = 1 order by name'
-    )
+  const db = await getDatabase();
+  return db.getAllAsync<Product>(
+    'select id, name, category, unit_price_cents, active from products where active = 1 order by name'
+  );
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-    const db = await getDatabase();
-    const result = await db.getFirstAsync<Product>(
-        'select * from products where id = ?', [id]
-    )
-    return result || null;
+  const db = await getDatabase();
+  return db.getFirstAsync<Product>(
+    'select id, name, category, unit_price_cents, active from products where id = ?',
+    [id]
+  );
 }
 
 export async function insertProduct(product: Product): Promise<void> {
-    const db = await getDatabase();
-    await db.runAsync(
-        `insert into products (id, stock, name, category, unit_price, active) values (?, ?, ?, ?, ?, ?)`,
-        [product.id, product.stock, product.name, product.category, product.unit_price, product.active]
-    )
+  const db = await getDatabase();
+  await db.runAsync(
+    'insert into products (id, name, category, unit_price_cents, active) values (?, ?, ?, ?, ?)',
+    [product.id, product.name, product.category, product.unit_price_cents, product.active]
+  );
 }
