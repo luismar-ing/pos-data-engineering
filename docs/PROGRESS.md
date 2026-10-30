@@ -16,7 +16,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 
 | Módulo | Estado | Notas |
 |---|---|---|
-| Proyecto Expo 57 + TS estricto | ✅ | |
+| Proyecto Expo 58 + TS estricto | ✅ | Actualizado desde SDK 57 (ADR-0005) para usar Expo Go actual |
 | Navegación (4 tabs) | 🟡 | Venta, Inventario, Dashboard, Ajustes como placeholders |
 | BD local (`database.ts` + `migrations.ts`) | ✅ | Migraciones con `PRAGMA user_version`; la app espera a que la BD esté lista. Verificado con SQLite real; falta probar en dispositivo |
 | Repositorio de productos | ✅ | API async, `unit_price_cents` |

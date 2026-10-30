@@ -4,14 +4,14 @@ POS móvil offline-first con Stock Leasing, Edge Analytics y Batch ETL. Visión 
 
 | Carpeta | Contenido |
 |---|---|
-| `pos-app/` | App móvil (Expo 57, React Native, expo-sqlite) |
+| `pos-app/` | App móvil (Expo 58, React Native 0.88, expo-sqlite) |
 | `pos-backend/` | API (Node, Express 5, PostgreSQL 16) |
 | `docs/` | Specs, arquitectura y progreso (flujo SDD) |
 | `compose.yaml` | Infraestructura local (Postgres) |
 
 ## Puesta en marcha
 
-Requisitos: Node 20+, Docker Desktop, Expo Go o un emulador.
+Requisitos: Node 22.13+ o 24.3+ (no versiones impares), Docker Desktop, Expo Go para SDK 58 o un emulador.
 
 ```bash
 # 1. Base de datos (desde la raíz). La primera vez aplica migraciones y datos semilla.

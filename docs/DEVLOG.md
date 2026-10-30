@@ -12,6 +12,12 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-30 — Actualización a Expo SDK 58
+**Spec:** SPEC-001 (desbloquea T11)
+**Hecho:** `pos-app` pasa de SDK 57 a 58 (React Native 0.88.1, React 19.3.0, expo-sqlite 58.0.14, expo-crypto 58.0.7). Sin cambios de código: las APIs usadas siguen iguales. `tsc` ok, `expo-doctor` 20/20, bundle de Android generado.
+**Decisiones:** ADR-0005: mantener el SDK que soporte Expo Go mientras no haya development build.
+**Bloqueos / pendientes:** T11, abrir la app en el teléfono con Expo Go.
+
 ## 2026-10-30 — SPEC-001: modelo de datos unificado + Docker del proyecto
 **Spec:** SPEC-001
 **Hecho:** Aprobada con P1–P4 según recomendación. App: migraciones SQLite con `user_version`, montos en centavos, `createSale` atómico con evento `sale_created`, `expo-crypto` para UUID. Backend: migraciones `0001..0003` (`sales` + `sale_items` reemplazan `sale_events`), `/sync/events` con la venta completa e idempotente, `rollingAverage` sobre `sale_items`. Nuevo `compose.yaml` en la raíz (contenedor `pos-de-db`, puerto 5434, BD `posde`) que aplica migraciones y semilla al crearse; se retiró `pos-backend/docker-compose.yml`.

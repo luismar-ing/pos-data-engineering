@@ -4,7 +4,7 @@ Monorepo (un solo repo git en esta carpeta, ver `docs/adr/0004-monorepo.md`):
 
 | Carpeta | Qué es |
 |---|---|
-| `pos-app/` | App móvil (Expo 57 + React Native + expo-sqlite + Zustand) |
+| `pos-app/` | App móvil (Expo 58 + React Native + expo-sqlite + Zustand) |
 | `pos-backend/` | API central (Node + Express 5 + PostgreSQL 16) |
 | `docs/` | Documentación SDD (visión, arquitectura, specs, progreso) |
 
@@ -22,7 +22,7 @@ Cada subproyecto tiene su propio `package.json` y `node_modules`: ejecutar `npm`
 
 ## Reglas rápidas
 
-- Antes de tocar la app, leer la doc versionada de Expo v57 (ver `pos-app/AGENTS.md`).
+- Antes de tocar la app, leer la doc versionada de Expo v58 (ver `pos-app/AGENTS.md`).
 - Los términos del dominio están en `docs/GLOSSARY.md`; úsalos tal cual en código y docs.
 - Convenciones de código, ramas y commits: `docs/CONVENTIONS.md`.
 - Nunca commitear `.env`.
