@@ -16,6 +16,7 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-016 | ⚪ | app | `sessionStore.ts` | `addToCart` duplica la línea en vez de sumar cantidad; `isOnline` no está conectado al estado real de red | SPEC-006 / SPEC-007 |
 | TD-018 | ⚪ | backend | `test-db.ts` | Imprime `DB_URL` completa (incluye contraseña) en consola | SPEC-002 |
 | TD-019 | ⚪ | backend | `devices` / `sales.device_id` | `sales.device_id` no tiene FK a `devices` porque aún no hay registro de dispositivos | SPEC-003 |
+| TD-020 | 🟠 | backend | `src/db/pool.ts` | El `Pool` de `pg` no tiene `pool.on('error')`: si Postgres corta una conexión inactiva (reinicio de Docker, `drop database`), el proceso entero se cae con "Unhandled 'error' event". Detectado al verificar SPEC-001 | SPEC-002 |
 
 ## Riesgos de diseño
 

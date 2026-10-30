@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-30 — SPEC-001: modelo de datos unificado + Docker del proyecto
+**Spec:** SPEC-001
+**Hecho:** Aprobada con P1–P4 según recomendación. App: migraciones SQLite con `user_version`, montos en centavos, `createSale` atómico con evento `sale_created`, `expo-crypto` para UUID. Backend: migraciones `0001..0003` (`sales` + `sale_items` reemplazan `sale_events`), `/sync/events` con la venta completa e idempotente, `rollingAverage` sobre `sale_items`. Nuevo `compose.yaml` en la raíz (contenedor `pos-de-db`, puerto 5434, BD `posde`) que aplica migraciones y semilla al crearse; se retiró `pos-backend/docker-compose.yml`.
+**Verificación:** CA-1..CA-4 y CA-6 con `node:sqlite` partiendo del esquema viejo roto; CA-5 con `curl` contra Postgres (2 envíos ⇒ 1 venta, 3 líneas, total 30). `tsc --noEmit` ok en ambos.
+**Decisiones:** Commits sin trailer de coautoría de IA (CONVENTIONS). Docker propio del proyecto en lugar de migrar la BD vieja `posapp` (queda intacta en el contenedor `pos-backend-postgres-1`).
+**Bloqueos / pendientes:** T11, abrir la app en emulador/dispositivo. Nuevo hallazgo TD-020: el backend se cae si Postgres corta una conexión.
+
 ## 2026-10-29 — Migración a monorepo
 **Spec:** —
 **Hecho:** App y backend unidos en un solo repo en `POS_DE_APP/` con `git subtree add`, conservando los 11 commits originales. Se commiteó antes el cambio pendiente de `pos-app/index.ts` (`be8a1c8`). `node_modules`, `.env` y `.expo` se trasladaron sin cambios; contenido verificado idéntico al original. Carpetas vacías de `pos-app/src` recreadas a mano (git no versiona carpetas vacías).

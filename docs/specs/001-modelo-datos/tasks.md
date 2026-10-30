@@ -10,11 +10,11 @@ Rama: `spec/001-modelo-datos` (monorepo).
 - [x] **T5** [app] Instalar generador de UUID compatible con Expo 57 y crear `features/sales/data/saleRepository.ts` con `createSale` atómico (depende de T3) — *Verificación:* CA-4, CA-6 ✅ (SQL y reglas; falta probar en dispositivo, ver T11)
 
 ### pos-backend
-- [ ] **T6** [backend] Crear `db/migrations/0001..0003` según el plan ✅ y aplicarlos en la BD de Docker ⏳ — *Verificación:* `\dt` muestra las tablas
-- [ ] **T7** [backend] Adaptar `rollingAverage.ts` a `sale_items` + `sales` (código ✅, prueba ⏳) — *Verificación:* `POST /prestamos/request` responde con datos semilla
-- [ ] **T8** [backend] Adaptar `sync.ts` a la nueva forma de evento, insertando venta + líneas en una transacción (código ✅, prueba ⏳) — *Verificación:* CA-5 con `curl` ×2
+- [x] **T6** [backend] Crear `db/migrations/0001..0003` y aplicarlos en la BD de Docker — *Verificación:* ✅ el contenedor `pos-de-db` (compose.yaml en la raíz) los aplica al crearse; tablas y 5 productos semilla presentes
+- [x] **T7** [backend] Adaptar `rollingAverage.ts` a `sale_items` + `sales` — *Verificación:* ✅ `POST /prestamos/request` devuelve `qty_total: 5`
+- [x] **T8** [backend] Adaptar `sync.ts` a la nueva forma de evento, insertando venta + líneas en una transacción — *Verificación:* ✅ CA-5: 1er envío `inserted: 1`, 2º `duplicated: 1`; quedan 1 venta, 3 líneas, total 30; body inválido ⇒ 400
 - [x] **T9** [backend] Eliminar `db/schema.sql` (depende de T6)
 
 ### Cierre
-- [ ] **T10** [docs] Actualizar `ARCHITECTURE.md` §4–5 ✅, `TECH_DEBT.md` ✅, `PROGRESS.md` y `DEVLOG.md`, estado → Done
+- [x] **T10** [docs] Actualizar `ARCHITECTURE.md` §4–5, `TECH_DEBT.md`, `PROGRESS.md` y `DEVLOG.md` (estado → Done al completar T11)
 - [ ] **T11** [app] Abrir la app en emulador/dispositivo y confirmar que no hay errores de BD en consola (CA-1 en dispositivo real)

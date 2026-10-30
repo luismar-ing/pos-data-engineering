@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Approved |
+| Estado | In Progress |
 | Fase | 0 — Cimientos |
 | Repos | app, backend |
 | Depende de | — |
