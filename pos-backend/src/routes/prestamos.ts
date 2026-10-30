@@ -1,13 +1,13 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { calculateLeaseQty } from '../services/rollingAverage.js';
 
 export const prestamosRouter = Router();
 
+const leaseRequestSchema = z.object({ product_id: z.uuid() });
+
 prestamosRouter.post('/request', async (req, res) => {
-    const {product_id} = req.body as {product_id: string};
-    if (!product_id) {
-        return res.status(400).json({error: 'product_id es requerido'});
-    }
+    const { product_id } = leaseRequestSchema.parse(req.body);
 
     const qty = await calculateLeaseQty(product_id);
     res.json({
