@@ -71,6 +71,12 @@ Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck`
 4. Para cobrar hace falta una sesión abierta (nombre del vendedor), una a la vez por dispositivo. Abrir y cerrar funciona sin red y escribe `session_opened` / `session_closed` en `event_log`. Cada venta lleva `session_id`.
 5. Sin red, el registro queda pendiente. Se reintenta al abrir la app o desde Ajustes; no hay reintento automático al volver la red (TD-022).
 
+### 3.0b Catálogo (SPEC-004)
+1. Al abrir la app (sin esperar) o con "Actualizar" en Inventario: `GET /catalogo`. Una sola descarga a la vez.
+2. `parseCatalog` valida la respuesta. Si un producto es inválido, se descarta toda la descarga.
+3. En una transacción exclusiva: todos los productos locales a `active = 0`; upsert de cada producto recibido con `active = 1`; `catalog_synced_at` en `settings`. Lo que no vino queda inactivo (nunca se borra, por las FK); lo que vuelve se reactiva.
+4. Sin red se usa el catálogo guardado. Cada venta conserva el precio con que se cobró (`sale_items.unit_price_cents`).
+
 ### 3.1 Venta online
 1. Vendedor arma carrito → confirma.
 2. Se escribe `sale` + `sale_items` + evento en `event_log` (local, transacción única).
@@ -102,10 +108,10 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 
 | Tabla | Propósito |
 |---|---|
-| `products` | Copia local del catálogo (`unit_price_cents`). No guarda stock: el stock vendible offline es la suma de leases activos |
+| `products` | Copia local del catálogo (`unit_price_cents`); `active = 0` si ya no viene del servidor. No guarda stock: el stock vendible offline es la suma de leases activos |
 | `stock_leases` | Cuotas por dispositivo y producto (`quota_total`, `quota_used ≤ quota_total`, `status`); `id` lo emite el servidor |
 | `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2) |
-| `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2) |
+| `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004) |
 | `sessions` | Sesiones de vendedor; índice único parcial ⇒ solo una con `closed_at is null` (v2) |
 | `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` en `payload_json` |
 

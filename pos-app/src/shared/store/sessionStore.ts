@@ -12,6 +12,9 @@ interface SessionState {
     /** Sesión de vendedor abierta en este dispositivo (SPEC-003); null si no hay. */
     currentSession: Session | null;
     setCurrentSession: (session: Session | null) => void;
+    /** Hora de la última descarga correcta del catálogo (SPEC-004); al cambiar, Inventario recarga. */
+    catalogSyncedAt: string | null;
+    setCatalogSyncedAt: (syncedAt: string | null) => void;
     cart: CartItem[];
     setOnlineStatus: (status: boolean) => void;
     addToCart: (item: CartItem) => void;
@@ -22,6 +25,8 @@ export const useSessionStore = create<SessionState>((set) => ({
     isOnline: true,
     currentSession: null,
     setCurrentSession: (session) => set({ currentSession: session }),
+    catalogSyncedAt: null,
+    setCatalogSyncedAt: (syncedAt) => set({ catalogSyncedAt: syncedAt }),
     cart: [],
     setOnlineStatus: (status) => set({ isOnline: status }),
     addToCart: (item) =>

@@ -22,11 +22,3 @@ export async function getProductById(id: string): Promise<Product | null> {
     [id]
   );
 }
-
-export async function insertProduct(product: Product): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
-    'insert into products (id, name, category, unit_price_cents, active) values (?, ?, ?, ?, ?)',
-    [product.id, product.name, product.category, product.unit_price_cents, product.active]
-  );
-}
