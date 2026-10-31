@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { getDatabase } from './core/db/database';
+import { getDeviceIdentity } from './core/device/deviceIdentity';
+import { ensureRegistered } from './core/device/registration';
+import { getOpenSession } from './features/session/data/sessionRepository';
+import { useSessionStore } from './shared/store/sessionStore';
 import { RootNavigator } from './navigation/RootNavigator';
 
 type DbState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
@@ -10,7 +14,12 @@ export default function App() {
 
   useEffect(() => {
     getDatabase()
-      .then(() => setDb({ status: 'ready' }))
+      .then(async () => {
+        await getDeviceIdentity(); // RF-1: crea la identidad en el primer arranque, sin red
+        useSessionStore.getState().setCurrentSession(await getOpenSession()); // RF-10
+        setDb({ status: 'ready' });
+        void ensureRegistered(); // RF-2: en segundo plano, sin bloquear la UI
+      })
       .catch((error: unknown) => {
         console.error('Error al abrir la base de datos local', error);
         setDb({ status: 'error', message: error instanceof Error ? error.message : String(error) });

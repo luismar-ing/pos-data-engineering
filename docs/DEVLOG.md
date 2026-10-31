@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-30 — SPEC-003: identidad de dispositivo y sesión
+**Spec:** SPEC-003
+**Hecho:** Spec, plan y tareas aprobados (P1–P6 según recomendación). Backend: migración `0004_devices_auth.sql` (`devices.token_hash`, FK `sales.device_id → devices` con relleno de dispositivos previos, `sales.session_id`); `POST /devices/register` idempotente (201/200/409); `requireDevice` (Bearer, sha256) en `/prestamos` y `/sync`; sync rechaza con 403 eventos de otro dispositivo. App: `expo-secure-store` + `expo-device`; `EXPO_PUBLIC_API_URL`; migración v2 (`settings`, `sessions` con índice único parcial, `sales.session_id`); identidad y registro (`core/device/`); cliente HTTP (`core/api/client.ts`); `sessionRepository` con eventos `session_opened`/`session_closed`; `createSale` exige sesión; pantallas Venta (abrir sesión, venta de prueba en `__DEV__`) y Ajustes.
+**Verificación:** backend `npm test` 34/34; app `npm test` 4/4 (migraciones con `node:sqlite`); `tsc` ok en ambos; `expo-doctor` 20/20; export Android ok. T9 en teléfono con Expo Go: CA-1 (id persiste tras reiniciar), CA-2 ("Registrado"), CA-6 (sin sesión no cobra), CA-7 (modo avión: abrir sesión y vender), CA-8 (la sesión persiste; al cerrarla no se cobra). CA-10: ningún log imprime el secreto.
+**Decisiones:** el dispositivo genera su propia credencial y el servidor solo guarda el hash (sin ADR: no cambia la arquitectura base). Nuevas dependencias de app: `expo-secure-store`, `expo-device`.
+**Bloqueos / pendientes:** TD-022 (reintento de registro al volver la red, SPEC-006); TD-023 (botón de venta de prueba, quitar en SPEC-007). En Android el secreto se borra al desinstalar: el teléfono se registra como dispositivo nuevo.
+
 ## 2026-10-30 — SPEC-002: infraestructura backend
 **Spec:** SPEC-002
 **Hecho:** Spec, plan y tareas aprobados (P1–P5 según recomendación). Backend: scripts `dev`/`build`/`start`/`typecheck`/`test`/`db:migrate`/`db:seed`; `config.ts` exige `DB_URL`; `pool.on('error')` (TD-020); runner de migraciones con `schema_migrations` y línea base para BD previas; semilla repetible; `createApp()` separado del arranque; errores `{ error: { code, message, details? } }`; `GET /health`; validación con `zod` en `/prestamos/request` y `/sync/events`; 21 pruebas con `node:test` sobre `posde_test`. Docker ya no aplica migraciones: solo crea `posde_test`. Borrados `db/init.sh` y `test-db.ts`.

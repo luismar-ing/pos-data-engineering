@@ -1,5 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 import { getDatabase } from '../../../core/db/database';
+import { getDeviceIdentity } from '../../../core/device/deviceIdentity';
 import { computeTotalCents, validateSaleLines, type SaleLineInput } from '../domain/saleTotals';
 
 export interface Sale {
@@ -8,6 +9,8 @@ export interface Sale {
   total_cents: number;
   payment_method: string;
   created_at: string;
+  /** Nulo solo en ventas anteriores a SPEC-003. */
+  session_id: string | null;
 }
 
 export interface SaleItem {
@@ -24,8 +27,13 @@ export interface SaleCreatedPayload {
   items: SaleItem[];
 }
 
+export class NoOpenSessionError extends Error {
+  constructor() {
+    super('Abre una sesión antes de cobrar');
+  }
+}
+
 export interface CreateSaleInput {
-  deviceId: string;
   paymentMethod: string;
   lines: SaleLineInput[];
 }
@@ -33,16 +41,19 @@ export interface CreateSaleInput {
 /**
  * Registra una venta de forma atómica: cabecera + líneas + evento `sale_created` en la bitácora.
  * El id del evento es el mismo que el de la venta, así el backend puede deduplicar por él.
+ * Toma el dispositivo y la sesión abierta; sin sesión lanza `NoOpenSessionError` (SPEC-003 RF-8, RF-11).
  */
 export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPayload> {
   validateSaleLines(input.lines);
+  const { id: deviceId } = await getDeviceIdentity();
 
   const sale: Sale = {
     id: randomUUID(),
-    device_id: input.deviceId,
+    device_id: deviceId,
     total_cents: computeTotalCents(input.lines),
     payment_method: input.paymentMethod,
     created_at: new Date().toISOString(),
+    session_id: null,
   };
   const items: SaleItem[] = input.lines.map((line) => ({
     id: randomUUID(),
@@ -55,9 +66,14 @@ export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPay
 
   const db = await getDatabase();
   await db.withExclusiveTransactionAsync(async (txn) => {
+    // La sesión se lee dentro de la transacción: no puede cerrarse entre la lectura y la venta.
+    const session = await txn.getFirstAsync<{ id: string }>('select id from sessions where closed_at is null');
+    if (!session) throw new NoOpenSessionError();
+    sale.session_id = session.id;
+
     await txn.runAsync(
-      'insert into sales (id, device_id, total_cents, payment_method, created_at) values (?, ?, ?, ?, ?)',
-      [sale.id, sale.device_id, sale.total_cents, sale.payment_method, sale.created_at]
+      'insert into sales (id, device_id, total_cents, payment_method, created_at, session_id) values (?, ?, ?, ?, ?, ?)',
+      [sale.id, sale.device_id, sale.total_cents, sale.payment_method, sale.created_at, sale.session_id]
     );
     for (const item of items) {
       await txn.runAsync(
