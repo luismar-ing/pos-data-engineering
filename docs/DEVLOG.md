@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-10-30 — SPEC-004: catálogo, descarga y caché local
+**Spec:** SPEC-004
+**Hecho:** Spec, plan y tareas aprobados (P1–P3 según propuesta). Backend: pruebas de `GET /catalogo` (público, solo activos, por nombre); sin cambios de código. App: `parseCatalog` (validación a mano, sin dependencias); `catalogRepository` (desactivar todo + upsert con sentencia preparada en una transacción exclusiva, `catalog_synced_at` en `settings`); `syncCatalog` (una descarga en vuelo) al abrir la app; `catalogSyncedAt` en el store; pantalla Inventario con botón Actualizar. La "Venta de prueba" usa el primer producto del catálogo; borrado `insertProduct`.
+**Verificación:** backend `npm test` 35/35; app `npm test` 9/9 (SQL real con `node:sqlite`: alta, cambio de precio, baja, reactivación, rollback, idempotencia); `tsc` ok en ambos; `expo-doctor` 20/20. T6 en teléfono: CA-1..CA-5 ok (CA-2 y CA-5 en modo avión). RNF-1: 2 000 productos guardados en 105 ms (meta < 1 s); productos temporales borrados y semilla restaurada.
+**Decisiones:** sin migración ni cambio de contrato. Las bajas quedan inactivas en vez de borrarse (FK de ventas y leases).
+**Bloqueos / pendientes:** la descarga al recuperar red llega con SPEC-006 (igual que TD-022).
+
 ## 2026-10-30 — SPEC-003: identidad de dispositivo y sesión
 **Spec:** SPEC-003
 **Hecho:** Spec, plan y tareas aprobados (P1–P6 según recomendación). Backend: migración `0004_devices_auth.sql` (`devices.token_hash`, FK `sales.device_id → devices` con relleno de dispositivos previos, `sales.session_id`); `POST /devices/register` idempotente (201/200/409); `requireDevice` (Bearer, sha256) en `/prestamos` y `/sync`; sync rechaza con 403 eventos de otro dispositivo. App: `expo-secure-store` + `expo-device`; `EXPO_PUBLIC_API_URL`; migración v2 (`settings`, `sessions` con índice único parcial, `sales.session_id`); identidad y registro (`core/device/`); cliente HTTP (`core/api/client.ts`); `sessionRepository` con eventos `session_opened`/`session_closed`; `createSale` exige sesión; pantallas Venta (abrir sesión, venta de prueba en `__DEV__`) y Ajustes.

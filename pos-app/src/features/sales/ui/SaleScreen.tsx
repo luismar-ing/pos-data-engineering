@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, StyleSheet, Text, View } from 'react-native';
-import { getDatabase } from '../../../core/db/database';
+import { getAllProducts } from '../../inventory/data/productRepository';
 import { useSessionStore } from '../../../shared/store/sessionStore';
 import { OpenSessionForm } from '../../session/ui/OpenSessionForm';
 import { createSale } from '../data/saleRepository';
@@ -14,14 +14,15 @@ export function SaleScreen() {
 
   async function handleTestSale() {
     try {
-      // shortcut: producto de prueba local hasta que SPEC-004 descargue el catálogo; quitar con el carrito de SPEC-007.
-      const db = await getDatabase();
-      await db.runAsync(
-        `insert or ignore into products (id, name, unit_price_cents) values ('11111111-1111-4111-8111-111111111111', 'Agua 600 ml', 1500)`
-      );
+      // shortcut: vende el primer producto del catálogo; quitar con el carrito de SPEC-007 (TD-023).
+      const [product] = await getAllProducts();
+      if (!product) {
+        Alert.alert('Sin catálogo', 'Actualiza el catálogo desde Inventario con red.');
+        return;
+      }
       const { sale } = await createSale({
         paymentMethod: 'cash',
-        lines: [{ productId: '11111111-1111-4111-8111-111111111111', quantity: 1, unitPriceCents: 1500 }],
+        lines: [{ productId: product.id, quantity: 1, unitPriceCents: product.unit_price_cents }],
       });
       setLastSale(`Venta ${sale.id.slice(0, 8)} · sesión ${sale.session_id?.slice(0, 8)}`);
     } catch (error) {

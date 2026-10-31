@@ -12,7 +12,7 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-013 | 🟡 | app | — | La app solo prueba migraciones (`npm test`, `node:sqlite`); faltan pruebas de repositorios y UI | cada spec de app |
 | TD-016 | ⚪ | app | `sessionStore.ts` | `addToCart` duplica la línea en vez de sumar cantidad; `isOnline` no está conectado al estado real de red | SPEC-006 / SPEC-007 |
 | TD-022 | ⚪ | app | `core/device/registration.ts` | Sin red, el registro se reintenta solo al abrir la app o desde Ajustes; no al volver la red | SPEC-006 |
-| TD-023 | ⚪ | app | `features/sales/ui/SaleScreen.tsx` | Botón "Venta de prueba" (solo `__DEV__`) inserta un producto local fijo | SPEC-007 (carrito) |
+| TD-023 | ⚪ | app | `features/sales/ui/SaleScreen.tsx` | Botón "Venta de prueba" (solo `__DEV__`) vende el primer producto del catálogo | SPEC-007 (carrito) |
 
 ## Riesgos de diseño
 
