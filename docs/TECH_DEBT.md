@@ -9,9 +9,10 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-007 | 🔴 | backend | `routes/prestamos.ts` | El lease se calcula pero **no se congela** en `central_stock` ni se persiste: dos dispositivos pueden recibir el mismo stock ⇒ sobreventa | SPEC-005 |
 | TD-008 | 🟠 | backend | `services/rollingAverage.ts` | Tasa de consumo global por producto, no por dispositivo (el planteamiento pide por dispositivo). Lectura de stock y cálculo sin bloqueo ⇒ condición de carrera | SPEC-005 |
 | TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, descontar stock/lease, respuesta por evento | SPEC-008 |
-| TD-013 | 🟡 | app | — | No hay pruebas automatizadas en la app (backend: resuelto en SPEC-002) | cada spec de app |
+| TD-013 | 🟡 | app | — | La app solo prueba migraciones (`npm test`, `node:sqlite`); faltan pruebas de repositorios y UI | cada spec de app |
 | TD-016 | ⚪ | app | `sessionStore.ts` | `addToCart` duplica la línea en vez de sumar cantidad; `isOnline` no está conectado al estado real de red | SPEC-006 / SPEC-007 |
-| TD-019 | ⚪ | backend | `devices` / `sales.device_id` | `sales.device_id` no tiene FK a `devices` porque aún no hay registro de dispositivos | SPEC-003 |
+| TD-022 | ⚪ | app | `core/device/registration.ts` | Sin red, el registro se reintenta solo al abrir la app o desde Ajustes; no al volver la red | SPEC-006 |
+| TD-023 | ⚪ | app | `features/sales/ui/SaleScreen.tsx` | Botón "Venta de prueba" (solo `__DEV__`) inserta un producto local fijo | SPEC-007 (carrito) |
 
 ## Riesgos de diseño
 
@@ -41,4 +42,5 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-014 (backend) | Migraciones aplicadas a mano | SPEC-002 (`npm run db:migrate`, ADR-0006) | 2026-10-30 |
 | TD-018 | `test-db.ts` imprimía la contraseña | SPEC-002 (archivo eliminado) | 2026-10-30 |
 | TD-020 | El proceso se caía si Postgres cortaba una conexión | SPEC-002 (`pool.on('error')`) | 2026-10-30 |
+| TD-019 | `sales.device_id` sin FK a `devices` | SPEC-003 (migración 0004) | 2026-10-30 |
 | TD-021 | `npm audit`: `body-parser` < 2.4 (alta) y `qs` < 6.17 (moderada) | SPEC-002 (`npm audit fix`: body-parser 2.4.0, qs 6.17.1) | 2026-10-30 |

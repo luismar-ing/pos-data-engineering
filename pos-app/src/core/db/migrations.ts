@@ -64,4 +64,25 @@ export const MIGRATIONS: string[] = [
   create index idx_stock_leases_product on stock_leases(product_id, status);
   create index idx_sale_items_product on sale_items(product_id);
   `,
+
+  // v2 — SPEC-003: identidad del dispositivo y sesión del vendedor.
+  // settings guarda device_id, device_name y registered_at; el secreto va en SecureStore.
+  `
+  create table settings (
+    key text primary key,
+    value text not null
+  );
+
+  create table sessions (
+    id text primary key,
+    seller_name text not null check (length(trim(seller_name)) > 0),
+    opened_at text not null,
+    closed_at text
+  );
+  -- Como máximo una sesión abierta por dispositivo (RF-9).
+  create unique index idx_sessions_one_open on sessions((1)) where closed_at is null;
+
+  -- Nulo solo en ventas anteriores a SPEC-003.
+  alter table sales add column session_id text references sessions(id);
+  `,
 ];
