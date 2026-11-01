@@ -1,16 +1,16 @@
 # Progreso
 
-> Última revisión: **2026-10-30** · Fase actual: **0 — Cimientos** · Próximo paso: redactar SPEC-007 (flujo de venta: carrito → cobro → registro local).
+> Última revisión: **2026-11-01** · Fase actual: **2 — Offline + Stock Leasing** · Próximo paso: redactar SPEC-006 (monitor de conectividad y modo offline).
 
 Leyenda: ✅ hecho · 🟡 parcial / con problemas · 🔴 roto · ⬜ no iniciado
 
 ## Resumen
 
-SPEC-001 está terminada y verificada, también en teléfono: app y backend comparten el modelo de venta (cabecera + líneas, montos en centavos), el esquema local tiene migraciones versionadas y el backend recibe ventas sin duplicarlas. Postgres corre en un contenedor propio del proyecto. SPEC-002 deja el backend con comandos estándar, migraciones automáticas, errores con forma única, `/health` y pruebas automatizadas. SPEC-003 da a cada teléfono una identidad registrada en el servidor (secreto en almacén seguro, solo el hash en Postgres), protege `/prestamos` y `/sync`, y exige una sesión de vendedor abierta para cobrar; probado en teléfono, también sin red. SPEC-004 descarga el catálogo al abrir la app o a mano, lo guarda de forma atómica y lo muestra en Inventario sin red; las bajas quedan inactivas y las ventas conservan su precio. El núcleo del proyecto (congelar stock en leases, TD-007) sigue pendiente para SPEC-005.
+SPEC-001 está terminada y verificada, también en teléfono: app y backend comparten el modelo de venta (cabecera + líneas, montos en centavos), el esquema local tiene migraciones versionadas y el backend recibe ventas sin duplicarlas. Postgres corre en un contenedor propio del proyecto. SPEC-002 deja el backend con comandos estándar, migraciones automáticas, errores con forma única, `/health` y pruebas automatizadas. SPEC-003 da a cada teléfono una identidad registrada en el servidor (secreto en almacén seguro, solo el hash en Postgres), protege `/prestamos` y `/sync`, y exige una sesión de vendedor abierta para cobrar; probado en teléfono, también sin red. SPEC-004 descarga el catálogo al abrir la app o a mano, lo guarda de forma atómica y lo muestra en Inventario sin red; las bajas quedan inactivas y las ventas conservan su precio. SPEC-007 cierra la fase 1: carrito con buscador, cobro con método de pago y cambio, una venta por cobro y precio vigente al cobrar; 34 ms por cobro sin red en teléfono. El núcleo del proyecto (congelar stock en leases, TD-007) sigue pendiente para SPEC-005.
 
 ## Repositorio
 
-Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/004-catalogo`.
+Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/007-flujo-venta`.
 
 ## pos-app
 
@@ -23,15 +23,16 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | BD local (`database.ts` + `migrations.ts`) | ✅ | Migraciones con `PRAGMA user_version`; la app espera a que la BD esté lista. Probado en teléfono (Expo Go SDK 58) |
 | Repositorio de productos | ✅ | API async, `unit_price_cents` |
 | Catálogo local | ✅ | Descarga al abrir y a mano, validación, reemplazo atómico, bajas como inactivas; 2 000 productos en 105 ms en teléfono (SPEC-004) |
-| Registro de venta (`saleRepository`) | ✅ | Venta + líneas + evento `sale_created` en una transacción; exige sesión abierta y guarda `session_id` |
+| Registro de venta (`saleRepository`) | ✅ | Venta + líneas + evento `sale_created` en una transacción; exige sesión abierta y guarda `session_id`; precio y `active` leídos al cobrar (SPEC-007) |
 | Generación de UUID | ✅ | `expo-crypto` |
-| Store de sesión (Zustand) | 🟡 | `currentSession`, carrito e `isOnline`; sin conexión real a la red (TD-016) |
+| Store de sesión (Zustand) | 🟡 | `currentSession`, `catalogSyncedAt`, carrito (`cart.ts`); `isOnline` sin conexión real a la red (TD-016) |
 | Monitor de red | ⬜ | SPEC-006 |
 | Pantalla de inventario | ✅ | Lista del catálogo, hora de actualización, botón Actualizar (stock por lease en SPEC-005) |
-| Pantallas de venta (carrito) / dashboard | ⬜ | SPEC-007, SPEC-009 |
+| Pantalla de venta | ✅ | Buscador, carrito (−/+, tope 999), cobro con Efectivo/Tarjeta/Transferencia y cambio (SPEC-007) |
+| Dashboard | ⬜ | SPEC-009 |
 | Sync worker | ⬜ | SPEC-008 |
 | Recibo QR | ⬜ | SPEC-010 |
-| Tests automatizados | 🟡 | `npm test` (9): migraciones y catálogo con `node:sqlite` (TD-013) |
+| Tests automatizados | 🟡 | `npm test` (14): migraciones, catálogo, carrito y dinero (TD-013) |
 
 ## pos-backend
 
@@ -56,7 +57,8 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | SPEC-002 Infraestructura backend | 🏁 Done (2026-10-30) |
 | SPEC-003 Identidad de dispositivo y sesión | 🏁 Done (2026-10-30) |
 | SPEC-004 Catálogo: descarga y caché local | 🏁 Done (2026-10-30) |
-| SPEC-005 … SPEC-010 | ⬜ Sin redactar (ver `specs/README.md`) |
+| SPEC-007 Flujo de venta | 🏁 Done (2026-11-01) |
+| SPEC-005, 006, 008 … 010 | ⬜ Sin redactar (ver `specs/README.md`) |
 
 ## Decisiones pendientes del usuario
 

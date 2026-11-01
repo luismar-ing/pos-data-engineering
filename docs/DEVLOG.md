@@ -12,6 +12,14 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-01 — SPEC-007: flujo de venta
+**Spec:** SPEC-007
+**Hecho:** Spec, plan y tareas aprobados (P1–P5 según propuesta). App: `cart.ts` (agregar/sumar, −/+, tope 999, `priceCart`, búsqueda sin acentos, métodos de pago), `shared/utils/money.ts` (formato, monto recibido, cambio); carrito en el store solo con `{ productId, quantity }`; `createSale` lee precio y `active` dentro de su transacción (`ProductUnavailableError`); pantalla Venta con buscador, `CartPanel` y `CheckoutModal` (un cobro = una venta con `useRef`). Quitado "Venta de prueba" (TD-023); TD-016 queda solo por `isOnline`.
+**Verificación:** app `npm test` 14/14; `tsc` ok. T6 en teléfono: CA-1..CA-8 ok; CA-4 en modo avión, 34 ms por cobro (meta < 3 s); CA-7 con un producto desactivado en `posde`.
+**Hallazgos en T6 y arreglos:** (1) el teclado tapaba el modal de cobro: `KeyboardAvoidingView` con `behavior="padding"` en ambas plataformas (con edge-to-edge Android no redimensiona el modal) y cerrar el teclado al tocar fuera. (2) "fetch failed" al actualizar: la PC cambió de red y `.env.local` apuntaba a la IP vieja; además RN 0.88 no lanza `TypeError` al fallar la red, así que `apiFetch` ahora convierte cualquier fallo de red en `ApiError` `NETWORK_ERROR` ("Sin conexión con el servidor").
+**Decisiones:** sin migración ni contrato nuevo; el precio se fija al cobrar, no al agregar.
+**Bloqueos / pendientes:** TD-024 (parches de `expo` y `expo-sqlite`). Si cambia la red de la PC, actualizar `EXPO_PUBLIC_API_URL` en `.env.local` y reiniciar con `npx expo start --clear`.
+
 ## 2026-10-30 — SPEC-004: catálogo, descarga y caché local
 **Spec:** SPEC-004
 **Hecho:** Spec, plan y tareas aprobados (P1–P3 según propuesta). Backend: pruebas de `GET /catalogo` (público, solo activos, por nombre); sin cambios de código. App: `parseCatalog` (validación a mano, sin dependencias); `catalogRepository` (desactivar todo + upsert con sentencia preparada en una transacción exclusiva, `catalog_synced_at` en `settings`); `syncCatalog` (una descarga en vuelo) al abrir la app; `catalogSyncedAt` en el store; pantalla Inventario con botón Actualizar. La "Venta de prueba" usa el primer producto del catálogo; borrado `insertProduct`.

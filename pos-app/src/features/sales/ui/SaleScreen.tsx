@@ -1,46 +1,84 @@
-import { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, View } from 'react-native';
-import { getAllProducts } from '../../inventory/data/productRepository';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { formatCents } from '../../../shared/utils/money';
+import { getAllProducts, type Product } from '../../inventory/data/productRepository';
 import { OpenSessionForm } from '../../session/ui/OpenSessionForm';
-import { createSale } from '../data/saleRepository';
+import { matchesSearch, priceCart } from '../domain/cart';
+import { CartPanel } from './CartPanel';
+import { CheckoutModal } from './CheckoutModal';
 
-/** Venta. Sin sesión abierta no se puede cobrar (SPEC-003 CA-6). El carrito llega con SPEC-007. */
+/** Venta: catálogo con buscador arriba, carrito abajo (SPEC-007 P5). Sin sesión no se cobra (SPEC-003 CA-6). */
 export function SaleScreen() {
   const session = useSessionStore((s) => s.currentSession);
-  const [lastSale, setLastSale] = useState<string | null>(null);
+  const syncedAt = useSessionStore((s) => s.catalogSyncedAt);
+  const cart = useSessionStore((s) => s.cart);
+  const addToCart = useSessionStore((s) => s.addToCart);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [query, setQuery] = useState('');
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  const reload = useCallback(() => {
+    getAllProducts()
+      .then(setProducts)
+      .catch((error) => console.error('Error al leer el catálogo local', error));
+  }, []);
+  useFocusEffect(reload);
+  useEffect(reload, [syncedAt, reload]); // una actualización del catálogo cambia precios y bajas
+
+  const priced = useMemo(() => priceCart(cart, new Map(products.map((p) => [p.id, p]))), [cart, products]);
+  const visible = useMemo(() => products.filter((p) => matchesSearch(p.name, query)), [products, query]);
 
   if (!session) return <OpenSessionForm />;
 
-  async function handleTestSale() {
-    try {
-      // shortcut: vende el primer producto del catálogo; quitar con el carrito de SPEC-007 (TD-023).
-      const [product] = await getAllProducts();
-      if (!product) {
-        Alert.alert('Sin catálogo', 'Actualiza el catálogo desde Inventario con red.');
-        return;
-      }
-      const { sale } = await createSale({
-        paymentMethod: 'cash',
-        lines: [{ productId: product.id, quantity: 1, unitPriceCents: product.unit_price_cents }],
-      });
-      setLastSale(`Venta ${sale.id.slice(0, 8)} · sesión ${sale.session_id?.slice(0, 8)}`);
-    } catch (error) {
-      Alert.alert('No se pudo registrar la venta', error instanceof Error ? error.message : String(error));
-    }
-  }
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sesión de {session.seller_name}</Text>
-      <Text>Desde {new Date(session.opened_at).toLocaleTimeString()}</Text>
-      {__DEV__ && <Button title="Venta de prueba" onPress={handleTestSale} />}
-      {lastSale && <Text>{lastSale}</Text>}
+      <Text style={styles.session}>Sesión de {session.seller_name}</Text>
+      <TextInput
+        style={styles.search}
+        placeholder="Buscar producto"
+        value={query}
+        onChangeText={setQuery}
+        accessibilityLabel="Buscar producto por nombre"
+        clearButtonMode="while-editing"
+      />
+      <FlatList
+        style={styles.list}
+        data={visible}
+        keyExtractor={(p) => p.id}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => (
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            onPress={() => addToCart(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`Agregar ${item.name}, ${formatCents(item.unit_price_cents)}`}
+          >
+            <Text style={styles.name}>{item.name}</Text>
+            <Text style={styles.price}>{formatCents(item.unit_price_cents)}</Text>
+          </Pressable>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {products.length ? 'Ningún producto coincide.' : 'No hay catálogo. Actualízalo desde Inventario con red.'}
+          </Text>
+        }
+      />
+      <CartPanel priced={priced} onCheckout={() => setCheckingOut(true)} />
+      <CheckoutModal visible={checkingOut} totalCents={priced.totalCents} onClose={() => setCheckingOut(false)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 18, fontWeight: '600' },
+  container: { flex: 1 },
+  session: { paddingHorizontal: 16, paddingTop: 12, color: '#666' },
+  search: { margin: 16, marginBottom: 8, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 16 },
+  list: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, borderTopWidth: 1, borderColor: '#eee' },
+  pressed: { backgroundColor: '#f2f2f2' },
+  name: { flex: 1, fontSize: 16 },
+  price: { fontSize: 16, fontVariant: ['tabular-nums'] },
+  empty: { padding: 24, textAlign: 'center', color: '#666' },
 });

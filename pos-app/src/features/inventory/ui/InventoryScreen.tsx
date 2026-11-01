@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Button, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { ApiError } from '../../../core/api/client';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { formatCents } from '../../../shared/utils/money';
 import { syncCatalog } from '../data/catalogSync';
 import { getAllProducts, type Product } from '../data/productRepository';
-
-const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 /** Inventario: catálogo local, también sin red (SPEC-004 RF-2, RF-9). El stock por lease llega con SPEC-005. */
 export function InventoryScreen() {
@@ -28,7 +26,7 @@ export function InventoryScreen() {
     try {
       await syncCatalog();
     } catch (error) {
-      const reason = error instanceof ApiError ? error.message : error instanceof TypeError ? 'Sin conexión con el servidor' : String(error);
+      const reason = error instanceof Error ? error.message : String(error);
       Alert.alert('No se pudo actualizar el catálogo', `${reason}. Se mantiene el catálogo guardado.`);
     } finally {
       setSyncing(false);
@@ -52,7 +50,7 @@ export function InventoryScreen() {
               <Text style={styles.name}>{item.name}</Text>
               {item.category && <Text style={styles.category}>{item.category}</Text>}
             </View>
-            <Text style={styles.price}>{formatPrice(item.unit_price_cents)}</Text>
+            <Text style={styles.price}>{formatCents(item.unit_price_cents)}</Text>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.empty}>No hay productos. Conéctate a la red y toca Actualizar.</Text>}
