@@ -10,7 +10,7 @@ Guía: [SPEC_GUIDE.md](SPEC_GUIDE.md) · Plantillas: [_template/](_template/)
 | [SPEC-004](004-catalogo/spec.md) | Catálogo: descarga y caché local | 1 | app, backend | 001, 002 | 🏁 Done |
 | SPEC-005 | Stock Leasing (cálculo, congelado, renovación, liberación) | 2 | backend, app | 001, 002, 003 | ⬜ Por redactar |
 | SPEC-006 | Monitor de conectividad y modo offline | 2 | app | 001 | ⬜ Por redactar |
-| SPEC-007 | Flujo de venta (carrito → cobro → registro local) | 1 | app | 001, 004 | ⬜ Por redactar |
+| [SPEC-007](007-flujo-venta/spec.md) | Flujo de venta (carrito → cobro → registro local) | 1 | app | 001, 003, 004 | 🏁 Done |
 | SPEC-008 | Bitácora + Batch Sync ETL idempotente | 2 | app, backend | 001, 003, 007 | ⬜ Por redactar |
 | SPEC-009 | Edge Analytics (Burn Rate, Runout Time, top productos) | 3 | app | 007 | ⬜ Por redactar |
 | SPEC-010 | Recibos QR offline | 3 | app | 007 | ⬜ Por redactar |

@@ -31,7 +31,7 @@ src/
   navigation/RootNavigator.tsx      # tabs: Venta, Inventario, Dashboard, Ajustes
   core/db/                          # conexión y esquema SQLite
   core/config.ts                    # API_URL desde EXPO_PUBLIC_API_URL (.env.local)
-  core/api/client.ts                # apiFetch + ApiError (forma de error del backend)
+  core/api/client.ts                # apiFetch + ApiError (forma de error del backend; sin red ⇒ NETWORK_ERROR)
   core/device/                      # identidad (id + secreto en expo-secure-store) y registro
   core/network/*                    # monitor de conectividad
   core/sync/*                       # pipeline Batch ETL
@@ -40,6 +40,7 @@ src/
     domain/*                        # reglas puras, testeables
     ui/*                            # pantallas y componentes
   shared/store/                     # stores Zustand
+  shared/utils/money.ts             # formatCents, parseMoneyToCents, computeChangeCents
 ```
 
 ### pos-backend
@@ -78,9 +79,9 @@ Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck`
 4. Sin red se usa el catálogo guardado. Cada venta conserva el precio con que se cobró (`sale_items.unit_price_cents`).
 
 ### 3.1 Venta online
-1. Vendedor arma carrito → confirma.
-2. Se escribe `sale` + `sale_items` + evento en `event_log` (local, transacción única).
-3. Se descuenta `quota_used` del lease activo.
+1. Vendedor arma carrito (SPEC-007): el carrito guarda solo `{ productId, quantity }` en memoria; nombre y precio se leen del catálogo local al mostrarlo. Elige método de pago (`cash` / `card` / `transfer`) y confirma.
+2. `createSale`, en una transacción exclusiva: lee la sesión abierta y el precio vigente y `active` de cada producto (inactivo ⇒ `ProductUnavailableError`, nada se escribe); escribe `sale` + `sale_items` + evento `sale_created` en `event_log`. Un toque de "Confirmar" = una venta.
+3. Se descuenta `quota_used` del lease activo (⚠️ aún no: SPEC-005).
 4. El sync worker envía el evento de inmediato (lote de 1) → servidor responde → `sync_status = 'synced'`.
 
 ### 3.2 Venta offline

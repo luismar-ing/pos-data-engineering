@@ -1,6 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { getDatabase } from '../../../core/db/database';
 import { getDeviceIdentity } from '../../../core/device/deviceIdentity';
+import type { CartLine, PaymentMethod } from '../domain/cart';
 import { computeTotalCents, validateSaleLines, type SaleLineInput } from '../domain/saleTotals';
 
 export interface Sale {
@@ -33,43 +34,65 @@ export class NoOpenSessionError extends Error {
   }
 }
 
+export class ProductUnavailableError extends Error {
+  constructor() {
+    super('Un producto del carrito ya no está disponible; quítalo y vuelve a cobrar');
+  }
+}
+
 export interface CreateSaleInput {
-  paymentMethod: string;
-  lines: SaleLineInput[];
+  paymentMethod: PaymentMethod;
+  /** Sin precio: se lee del catálogo local al cobrar (SPEC-007 P4). */
+  lines: CartLine[];
 }
 
 /**
  * Registra una venta de forma atómica: cabecera + líneas + evento `sale_created` en la bitácora.
  * El id del evento es el mismo que el de la venta, así el backend puede deduplicar por él.
  * Toma el dispositivo y la sesión abierta; sin sesión lanza `NoOpenSessionError` (SPEC-003 RF-8, RF-11).
+ * Cobra el precio vigente del catálogo local; un producto inactivo lanza `ProductUnavailableError` (SPEC-007 RF-9).
  */
 export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPayload> {
-  validateSaleLines(input.lines);
+  if (input.lines.length === 0) throw new Error('La venta debe tener al menos una línea');
   const { id: deviceId } = await getDeviceIdentity();
-
-  const sale: Sale = {
-    id: randomUUID(),
-    device_id: deviceId,
-    total_cents: computeTotalCents(input.lines),
-    payment_method: input.paymentMethod,
-    created_at: new Date().toISOString(),
-    session_id: null,
-  };
-  const items: SaleItem[] = input.lines.map((line) => ({
-    id: randomUUID(),
-    sale_id: sale.id,
-    product_id: line.productId,
-    quantity: line.quantity,
-    unit_price_cents: line.unitPriceCents,
-  }));
-  const payload: SaleCreatedPayload = { sale, items };
+  const createdAt = new Date().toISOString();
+  let payload: SaleCreatedPayload | undefined;
 
   const db = await getDatabase();
   await db.withExclusiveTransactionAsync(async (txn) => {
-    // La sesión se lee dentro de la transacción: no puede cerrarse entre la lectura y la venta.
+    // Sesión y precios se leen dentro de la transacción: no pueden cambiar entre la lectura y la venta.
     const session = await txn.getFirstAsync<{ id: string }>('select id from sessions where closed_at is null');
     if (!session) throw new NoOpenSessionError();
-    sale.session_id = session.id;
+
+    const ids = input.lines.map((line) => line.productId);
+    const rows = await txn.getAllAsync<{ id: string; unit_price_cents: number; active: number }>(
+      `select id, unit_price_cents, active from products where id in (${ids.map(() => '?').join(', ')})`,
+      ids
+    );
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const lines: SaleLineInput[] = input.lines.map((line) => {
+      const product = byId.get(line.productId);
+      if (!product?.active) throw new ProductUnavailableError();
+      return { productId: line.productId, quantity: line.quantity, unitPriceCents: product.unit_price_cents };
+    });
+    validateSaleLines(lines);
+
+    const sale: Sale = {
+      id: randomUUID(),
+      device_id: deviceId,
+      total_cents: computeTotalCents(lines),
+      payment_method: input.paymentMethod,
+      created_at: createdAt,
+      session_id: session.id,
+    };
+    const items: SaleItem[] = lines.map((line) => ({
+      id: randomUUID(),
+      sale_id: sale.id,
+      product_id: line.productId,
+      quantity: line.quantity,
+      unit_price_cents: line.unitPriceCents,
+    }));
+    payload = { sale, items };
 
     await txn.runAsync(
       'insert into sales (id, device_id, total_cents, payment_method, created_at, session_id) values (?, ?, ?, ?, ?, ?)',
@@ -88,5 +111,5 @@ export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPay
     );
   });
 
-  return payload;
+  return payload!; // la transacción lo asigna; si falló, ya lanzó
 }

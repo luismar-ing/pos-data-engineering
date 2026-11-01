@@ -25,11 +25,17 @@ export async function apiFetch<T>(path: string, { method = 'GET', body, secret }
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (secret) headers.authorization = `Bearer ${secret}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    // Sin red o servidor inalcanzable. El tipo y el texto del error de fetch cambian entre versiones de RN.
+    throw new ApiError(0, 'NETWORK_ERROR', 'Sin conexión con el servidor');
+  }
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError(res.status, json?.error?.code ?? 'HTTP_ERROR', json?.error?.message ?? `HTTP ${res.status}`);

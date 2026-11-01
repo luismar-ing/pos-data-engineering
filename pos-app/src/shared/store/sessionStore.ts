@@ -1,11 +1,6 @@
 import { create } from "zustand";
 import type { Session } from "../../features/session/data/sessionRepository";
-
-interface CartItem {
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-}
+import { addProduct, changeQuantity, removeLine, type CartLine } from "../../features/sales/domain/cart";
 
 interface SessionState {
     isOnline: boolean;
@@ -15,9 +10,12 @@ interface SessionState {
     /** Hora de la última descarga correcta del catálogo (SPEC-004); al cambiar, Inventario recarga. */
     catalogSyncedAt: string | null;
     setCatalogSyncedAt: (syncedAt: string | null) => void;
-    cart: CartItem[];
+    /** Carrito en memoria (SPEC-007 P3): solo producto y cantidad; el precio sale del catálogo local. */
+    cart: CartLine[];
     setOnlineStatus: (status: boolean) => void;
-    addToCart: (item: CartItem) => void;
+    addToCart: (productId: string) => void;
+    changeCartQuantity: (productId: string, delta: number) => void;
+    removeFromCart: (productId: string) => void;
     clearCart: () => void;
 }
 
@@ -29,8 +27,8 @@ export const useSessionStore = create<SessionState>((set) => ({
     setCatalogSyncedAt: (syncedAt) => set({ catalogSyncedAt: syncedAt }),
     cart: [],
     setOnlineStatus: (status) => set({ isOnline: status }),
-    addToCart: (item) =>
-        // se guardan los valores previos del carrito (con state) y se agrega el nuevo item al final del array
-        set((state) => ({cart: [...state.cart, item]})),
-    clearCart: () => set({cart: []})
+    addToCart: (productId) => set((state) => ({ cart: addProduct(state.cart, productId) })),
+    changeCartQuantity: (productId, delta) => set((state) => ({ cart: changeQuantity(state.cart, productId, delta) })),
+    removeFromCart: (productId) => set((state) => ({ cart: removeLine(state.cart, productId) })),
+    clearCart: () => set({ cart: [] }),
 }))

@@ -2,18 +2,18 @@
 
 Cada fase se cierra cuando todas sus specs están en **Done** (ver quality gates en `CONSTITUTION.md`).
 
-## Fase 0 — Cimientos  ⏳ en curso
+## Fase 0 — Cimientos  ✅ cerrada
 Objetivo: esquemas correctos y alineados, backend con tooling mínimo.
 - SPEC-001 Modelo de datos unificado (app + backend)
 - SPEC-002 Infraestructura backend (scripts, migraciones, validación, errores, healthcheck, tests)
 
-## Fase 1 — Venta online básica
+## Fase 1 — Venta online básica  ✅ cerrada
 Objetivo: vender con red de punta a punta.
 - SPEC-003 Identidad de dispositivo y sesión
 - SPEC-004 Catálogo: descarga y caché local
 - SPEC-007 Flujo de venta (carrito → cobro → registro local)
 
-## Fase 2 — Offline + Stock Leasing  ⭐ núcleo del proyecto
+## Fase 2 — Offline + Stock Leasing  ⭐ núcleo del proyecto · ⏳ siguiente
 Objetivo: vender sin red sin sobrevender.
 - SPEC-005 Stock Leasing (cálculo, congelado, renovación, liberación)
 - SPEC-006 Monitor de conectividad y modo offline
