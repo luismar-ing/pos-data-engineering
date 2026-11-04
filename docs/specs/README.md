@@ -11,7 +11,7 @@ Guía: [SPEC_GUIDE.md](SPEC_GUIDE.md) · Plantillas: [_template/](_template/)
 | [SPEC-005](005-stock-leasing/spec.md) | Stock Leasing (cálculo, congelado, renovación, liberación) | 2 | backend, app | 001, 002, 003, 006 | 🏁 Done |
 | [SPEC-006](006-conectividad/spec.md) | Monitor de conectividad y modo offline | 2 | app | 001 | 🏁 Done |
 | [SPEC-007](007-flujo-venta/spec.md) | Flujo de venta (carrito → cobro → registro local) | 1 | app | 001, 003, 004 | 🏁 Done |
-| SPEC-008 | Bitácora + Batch Sync ETL idempotente | 2 | app, backend | 001, 003, 007 | ⬜ Por redactar |
+| [SPEC-008](008-sync-etl/spec.md) | Bitácora + Batch Sync ETL idempotente | 2 | app, backend | 001, 003, 005, 006, 007 | 🏁 Done |
 | SPEC-009 | Edge Analytics (Burn Rate, Runout Time, top productos) | 3 | app | 007 | ⬜ Por redactar |
 | SPEC-010 | Recibos QR offline | 3 | app | 007 | ⬜ Por redactar |
 

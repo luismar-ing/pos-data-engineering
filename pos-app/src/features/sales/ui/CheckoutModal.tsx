@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
 import { computeChangeCents, formatCents, parseMoneyToCents } from '../../../shared/utils/money';
+import { syncEvents } from '../../../core/sync/syncWorker';
 import { leaseSync } from '../../leases/data/leaseSync';
 import { createSale, type Sale } from '../data/saleRepository';
 import { PAYMENT_METHODS, type PaymentMethod } from '../domain/cart';
@@ -48,6 +49,7 @@ export function CheckoutModal({ visible, totalCents, onClose }: Props) {
       clearCart();
       useSessionStore.getState().setLeasesUpdatedAt(new Date().toISOString()); // la venta gastó cuota
       void leaseSync(); // SPEC-005 P4: renovar si queda poca cuota
+      void syncEvents(); // SPEC-008 RF-4: con red, la venta sale de inmediato
     } catch (error) {
       // La transacción hizo rollback: no se guardó nada y el carrito sigue igual (RF-9).
       Alert.alert('No se pudo cobrar', error instanceof Error ? error.message : String(error));

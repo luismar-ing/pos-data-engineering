@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-03 — SPEC-008: Bitácora + Batch Sync ETL
+**Spec:** SPEC-008
+**Hecho:** Spec, plan y tareas aprobados (P1–P7 según propuesta). Backend: migración `0006` (`sync_events` para la idempotencia de todos los tipos, con las ventas previas cargadas; `sessions`); `syncService` valida cada evento por tipo (total = Σ líneas, cantidad > 0, dispositivo), lo guarda en su propia transacción y responde `inserted`/`duplicate`/`rejected` con motivo; sesiones con upsert que acepta el cierre antes que la apertura; sobre con `batch_id`, `sent_at` y 1–50 eventos. App: migración v4 (`event_log.sync_error`); `syncSql` y `syncBatch` (`toWireEvent`, `fitBatch` < 80 kB) puros; `syncWorker.syncEvents` en bucle hasta vaciar la cola, una ejecución a la vez; disparos tras cobrar, al abrir/cerrar sesión, al reconectar, cada 30 s y desde Ajustes ("Pendientes · Fallidos · Último envío" y "Sincronizar ahora"). Cierra TD-009.
+**Verificación:** backend `npm test` 43/43; app `npm test` 34/34; `tsc` ok en ambos. CA-9 en el servidor: 500 eventos en 10 lotes en 4,0 s contra `posde_test` (meta < 30 s). T7 en teléfono: CA-1, CA-4, CA-5, CA-6 y CA-7 ok según el usuario.
+**Decisiones:** idempotencia con una tabla de eventos recibidos (no por id de entidad); una transacción por evento en vez de savepoints en una sola; un rechazo por evento ya no tumba el lote (se quita el 403 de lote y el código `FORBIDDEN`); el lote se recorta en la app en vez de subir el límite de 100 kB.
+**Bloqueos / pendientes:** TD-028 (conciliar préstamos con ventas), TD-029 (evento de más de 80 kB), TD-027 (prueba con dos dispositivos). Fase 2 cerrada; sigue la fase 3 (SPEC-009).
+
 ## 2026-11-03 — SPEC-005: Stock Leasing
 **Spec:** SPEC-005
 **Hecho:** Spec, plan y tareas aprobados (P1–P7 según propuesta; tasa por dispositivo). Backend: migración `0005` (FK a `devices`, `closed_at`, un préstamo activo por dispositivo y producto); `leaseService` reemplaza a `rollingAverage` (`calculateLeaseQty` pura con la tasa de los préstamos cerrados del dispositivo; `requestLeases` congela con `select … for update` en orden de id; `closeLeases` devuelve lo no vendido); rutas `POST /prestamos/request` y `/close`, una transacción por petición. App: migración v3 (`stock_leases` con `closing`, `quota_reported`, `renew_at`); `createSale` descuenta cuota en su transacción (`InsufficientQuotaError`); `leaseSync` (cerrar `closing` → pedir) al arrancar, al reconectar, cada 30 s, al abrir y cerrar sesión y tras cobrar; Venta con "Quedan N" / "Agotado" y tope del carrito; Inventario con "Disponible N". Cierra TD-007, TD-008, R-01 y R-02.

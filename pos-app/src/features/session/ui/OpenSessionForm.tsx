@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { syncEvents } from '../../../core/sync/syncWorker';
 import { leaseSync } from '../../leases/data/leaseSync';
 import { openSession } from '../data/sessionRepository';
 
@@ -15,6 +16,7 @@ export function OpenSessionForm() {
     try {
       setCurrentSession(await openSession(sellerName));
       void leaseSync(); // SPEC-005 RF-9
+      void syncEvents(); // SPEC-008: envía session_opened
     } catch (error) {
       Alert.alert('No se pudo abrir la sesión', error instanceof Error ? error.message : String(error));
     } finally {

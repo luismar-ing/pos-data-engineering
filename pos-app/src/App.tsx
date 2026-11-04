@@ -5,6 +5,7 @@ import { getDeviceIdentity } from './core/device/deviceIdentity';
 import { ensureRegistered } from './core/device/registration';
 import { isCatalogStale } from './core/network/connectivity';
 import { onReconnect, startConnectivityMonitor } from './core/network/monitor';
+import { syncEvents } from './core/sync/syncWorker';
 import { leaseSync } from './features/leases/data/leaseSync';
 import { getCatalogSyncedAt } from './features/inventory/data/catalogRepository';
 import { syncCatalog } from './features/inventory/data/catalogSync';
@@ -12,7 +13,7 @@ import { getOpenSession } from './features/session/data/sessionRepository';
 import { useSessionStore } from './shared/store/sessionStore';
 import { RootNavigator } from './navigation/RootNavigator';
 
-const LEASE_CHECK_MS = 30_000;
+const BACKGROUND_SYNC_MS = 30_000;
 
 type DbState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
 
@@ -36,10 +37,14 @@ export default function App() {
           if (isCatalogStale(useSessionStore.getState().catalogSyncedAt, Date.now())) syncCatalog().catch(() => {});
         });
         startConnectivityMonitor();
-        // SPEC-005 RF-9, RF-10: préstamos al arrancar, al reconectar y cada 30 s (vencimientos).
-        onReconnect(() => void leaseSync());
-        void leaseSync();
-        setInterval(() => void leaseSync(), LEASE_CHECK_MS);
+        // SPEC-005 RF-9, RF-10 y SPEC-008 RF-4: préstamos y bitácora al arrancar, al reconectar y cada 30 s.
+        const backgroundSync = () => {
+          void leaseSync();
+          void syncEvents();
+        };
+        onReconnect(backgroundSync);
+        backgroundSync();
+        setInterval(backgroundSync, BACKGROUND_SYNC_MS);
       })
       .catch((error: unknown) => {
         console.error('Error al abrir la base de datos local', error);
