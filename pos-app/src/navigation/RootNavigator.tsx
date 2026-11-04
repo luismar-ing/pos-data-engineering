@@ -5,6 +5,7 @@ import { View, Text } from 'react-native';
 import { SaleScreen } from '../features/sales/ui/SaleScreen';
 import { SettingsScreen } from '../features/settings/ui/SettingsScreen';
 import { InventoryScreen } from '../features/inventory/ui/InventoryScreen';
+import { OfflineBanner } from '../shared/ui/OfflineBanner';
 
 const DashboardScreen = () => <View><Text>Dashboard</Text></View>;
 
@@ -13,7 +14,14 @@ const Tab = createBottomTabNavigator();
 export function RootNavigator() {
     return (
         <NavigationContainer>
-            <Tab.Navigator>
+            <Tab.Navigator
+                screenLayout={({ children }) => (
+                    <View style={{ flex: 1 }}>
+                        <OfflineBanner />
+                        {children}
+                    </View>
+                )}
+            >
                 <Tab.Screen name="Venta" component={SaleScreen} />
                 <Tab.Screen name="Inventario" component={InventoryScreen} />
                 <Tab.Screen name="Dashboard" component={DashboardScreen} />

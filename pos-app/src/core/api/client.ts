@@ -1,3 +1,4 @@
+import { useSessionStore } from '../../shared/store/sessionStore';
 import { API_URL } from '../config';
 
 /** Error HTTP con el `code` estable del backend (forma de error de SPEC-002). */
@@ -34,6 +35,7 @@ export async function apiFetch<T>(path: string, { method = 'GET', body, secret }
     });
   } catch {
     // Sin red o servidor inalcanzable. El tipo y el texto del error de fetch cambian entre versiones de RN.
+    useSessionStore.getState().setOnlineStatus(false); // SPEC-006 RF-4
     throw new ApiError(0, 'NETWORK_ERROR', 'Sin conexión con el servidor');
   }
   const json = await res.json().catch(() => null);

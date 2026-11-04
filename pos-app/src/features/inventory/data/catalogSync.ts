@@ -17,7 +17,6 @@ export function syncCatalog(): Promise<void> {
   return inFlight;
 }
 
-// shortcut: solo al arrancar y a mano; descargar al recuperar red llega con el monitor de SPEC-006.
 async function download(): Promise<void> {
   const products = parseCatalog(await apiFetch<unknown>('/catalogo'));
   const syncedAt = new Date().toISOString();
