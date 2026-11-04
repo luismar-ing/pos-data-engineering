@@ -1,13 +1,12 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { SaleScreen } from '../features/sales/ui/SaleScreen';
 import { SettingsScreen } from '../features/settings/ui/SettingsScreen';
+import { DashboardScreen } from '../features/analytics/ui/DashboardScreen';
 import { InventoryScreen } from '../features/inventory/ui/InventoryScreen';
 import { OfflineBanner } from '../shared/ui/OfflineBanner';
-
-const DashboardScreen = () => <View><Text>Dashboard</Text></View>;
 
 const Tab = createBottomTabNavigator();
 

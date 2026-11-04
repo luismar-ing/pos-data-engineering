@@ -12,6 +12,14 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-04 — SPEC-009: Edge Analytics
+**Spec:** SPEC-009
+**Hecho:** Spec, plan y tareas aprobados (P1–P7 según propuesta). App: migración v5 (índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)`); `analyticsSql` (sesión objetivo, ventas de la ventana, cuota disponible, totales, top) y `metrics` (`windowMinutes`, `burnRate`, `buildRunout`, `averageTicketCents`) puros; `getDashboard` solo lee SQLite; pestaña Dashboard con ritmo, "Se agota" (agotados primero, ámbar < 5 min, contador de préstamos sin ventas), totales y top 5 de la sesión (o de la última cerrada); refresco al enfocar, cada 15 s y con `leasesUpdatedAt`.
+**Verificación:** app `npm test` 43/43; `tsc` ok. Con 2 000 productos y 10 000 ventas, las consultas del panel tardan < 200 ms en la PC (`node:sqlite`). T5 en teléfono: CA-1..CA-8 ok según el usuario.
+**Hallazgo en T5 y cambio:** con una sesión vieja, 4 unidades en menos de 1 min daban 0,4 u/min (se dividía por 10). Para un vendedor de estadio, avisar tarde en un pico cuesta ventas; por decisión del usuario el ritmo cuenta siempre desde la primera venta del teléfono en la ventana (entre 1 y 10 min), sin importar la sesión, así tampoco se pierde en un cambio de turno. Cambian P1 y CA-1.
+**Decisiones:** sin tabla de agregados ni worker: consultas directas con índices; solo lectura, sin cambios de backend.
+**Bloqueos / pendientes:** ninguno nuevo. Sigue SPEC-010 (recibos QR).
+
 ## 2026-11-03 — SPEC-008: Bitácora + Batch Sync ETL
 **Spec:** SPEC-008
 **Hecho:** Spec, plan y tareas aprobados (P1–P7 según propuesta). Backend: migración `0006` (`sync_events` para la idempotencia de todos los tipos, con las ventas previas cargadas; `sessions`); `syncService` valida cada evento por tipo (total = Σ líneas, cantidad > 0, dispositivo), lo guarda en su propia transacción y responde `inserted`/`duplicate`/`rejected` con motivo; sesiones con upsert que acepta el cierre antes que la apertura; sobre con `batch_id`, `sent_at` y 1–50 eventos. App: migración v4 (`event_log.sync_error`); `syncSql` y `syncBatch` (`toWireEvent`, `fitBatch` < 80 kB) puros; `syncWorker.syncEvents` en bucle hasta vaciar la cola, una ejecución a la vez; disparos tras cobrar, al abrir/cerrar sesión, al reconectar, cada 30 s y desde Ajustes ("Pendientes · Fallidos · Último envío" y "Sincronizar ahora"). Cierra TD-009.
