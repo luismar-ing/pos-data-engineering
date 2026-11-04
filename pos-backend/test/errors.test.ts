@@ -25,26 +25,27 @@ test('ruta inexistente → 404 NOT_FOUND', async () => {
     assert.equal((await res.json()).error.code, 'NOT_FOUND');
 });
 
-for (const [name, body] of [['sin product_id', {}], ['product_id no UUID', { product_id: 'abc' }]] as const) {
+for (const [name, body, path] of [['sin product_ids', {}, 'product_ids'], ['product_ids con un no UUID', { product_ids: ['abc'] }, 'product_ids.0']] as const) {
     test(`POST /prestamos/request ${name} → 400 VALIDATION_ERROR`, async () => {
         const res = await postJson(`${server.url}/prestamos/request`, body, secret);
         assert.equal(res.status, 400);
         const { error } = await res.json();
         assert.equal(error.code, 'VALIDATION_ERROR');
-        assert.equal(error.details[0].path, 'product_id');
+        assert.equal(error.details[0].path, path);
     });
 }
 
-test('POST /prestamos/request válido → 200 con el contrato de siempre', async () => {
+test('POST /prestamos/request válido → 200 con el contrato de SPEC-005', async () => {
     const product_id = '11111111-1111-4111-8111-111111111111';
-    const res = await postJson(`${server.url}/prestamos/request`, { product_id }, secret);
+    const res = await postJson(`${server.url}/prestamos/request`, { product_ids: [product_id] }, secret);
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.deepEqual(Object.keys(body).sort(), ['created_at', 'product_id', 'qty_total']);
-    assert.equal(body.product_id, product_id);
+    assert.deepEqual(Object.keys(body).sort(), ['leases', 'unavailable']);
+    assert.deepEqual(Object.keys(body.leases[0]).sort(), ['expires_at', 'id', 'issued_at', 'product_id', 'quota_total', 'quota_used']);
+    assert.equal(body.leases[0].product_id, product_id);
 });
 
-for (const path of ['/prestamos/request', '/sync/events']) {
+for (const path of ['/prestamos/request', '/prestamos/close', '/sync/events']) {
     for (const [name, credential] of [['sin credencial', undefined], ['credencial falsa', 'f'.repeat(64)]] as const) {
         test(`POST ${path} ${name} → 401 UNAUTHORIZED (CA-4)`, async () => {
             const before = await pool.query('select count(*)::int as n from sales');

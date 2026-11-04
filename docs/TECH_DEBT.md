@@ -6,9 +6,10 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Sev. | Repo | Ubicación | Problema | Se resuelve en |
 |---|---|---|---|---|---|
-| TD-007 | 🔴 | backend | `routes/prestamos.ts` | El lease se calcula pero **no se congela** en `central_stock` ni se persiste: dos dispositivos pueden recibir el mismo stock ⇒ sobreventa | SPEC-005 |
-| TD-008 | 🟠 | backend | `services/rollingAverage.ts` | Tasa de consumo global por producto, no por dispositivo (el planteamiento pide por dispositivo). Lectura de stock y cálculo sin bloqueo ⇒ condición de carrera | SPEC-005 |
-| TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, descontar stock/lease, respuesta por evento | SPEC-008 |
+| TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, respuesta por evento, y conciliar lo informado en `close` con las ventas sincronizadas. **No** descontar stock al sincronizar: ya salió al prestarse (SPEC-005) | SPEC-008 |
+| TD-025 | 🟡 | backend | `services/leaseService.ts` | La cuota de un teléfono perdido o desinstalado queda congelada para siempre: el servidor solo devuelve stock con `close` (SPEC-005 RF-15). Falta una forma de liberarla a mano | Spec de administración (por definir) |
+| TD-026 | ⚪ | app | `features/leases/data/leaseSync.ts` | Cada ciclo (30 s) vuelve a pedir préstamo de todos los productos sin stock; con catálogos grandes son varias peticiones inútiles | Cuando el catálogo crezca |
+| TD-027 | 🟡 | app, backend | — | CA-9 de SPEC-005 (dos dispositivos sin red no superan el stock) no se probó con dos dispositivos reales; está cubierto por partes: pedidos simultáneos en `lease.test.ts` y descuento local en `leases.test.mjs` | Fase 4 (pruebas con ≥ 2 dispositivos) |
 | TD-013 | 🟡 | app | — | La app solo prueba migraciones (`npm test`, `node:sqlite`); faltan pruebas de repositorios y UI | cada spec de app |
 | TD-024 | ⚪ | app | `package.json` | `expo-doctor` 19/20: salieron `expo` 58.0.23, `expo-sqlite` 58.0.15 y `react-native-safe-area-context` 5.11.1 (instalados 58.0.21 / 58.0.14 / 5.10.1) | `npx expo install --check` cuando se decida |
 
@@ -16,8 +17,6 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Riesgo | Mitigación propuesta |
 |---|---|---|
-| R-01 | Un lease expira mientras el dispositivo sigue offline vendiendo | El servidor no libera la cuota de un lease hasta recibir sync o pasar un tiempo de gracia largo; definir en SPEC-005 |
-| R-02 | Reloj del dispositivo desfasado altera `created_at` y el promedio móvil | Ya se guarda `sales.received_at` en el servidor; decidir en SPEC-005 cuál usar para el promedio móvil |
 | R-03 | Payload de recibo QR excede la capacidad del código | Definir formato compacto y límite de líneas en SPEC-010 |
 
 ## Resueltos
@@ -45,3 +44,7 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-021 | `npm audit`: `body-parser` < 2.4 (alta) y `qs` < 6.17 (moderada) | SPEC-002 (`npm audit fix`: body-parser 2.4.0, qs 6.17.1) | 2026-10-30 |
 | TD-016 | `isOnline` sin conexión al estado real de red | SPEC-006 (monitor de conectividad) | 2026-11-03 |
 | TD-022 | Registro sin reintento al volver la red | SPEC-006 (`onReconnect`) | 2026-11-03 |
+| TD-007 | El lease no se congelaba ni se guardaba ⇒ sobreventa | SPEC-005 (`requestLeases` con `for update`) | 2026-11-03 |
+| TD-008 | Tasa global por producto y lectura de stock sin bloqueo | SPEC-005 (tasa por dispositivo; fila de producto bloqueada) | 2026-11-03 |
+| R-01 | Lease que expira con el dispositivo sin red vendiendo | SPEC-005 (el servidor nunca devuelve stock sin `close`) | 2026-11-03 |
+| R-02 | Reloj del dispositivo desfasado en el promedio móvil | SPEC-005 (tasa con hora del servidor; renovación con duración relativa) | 2026-11-03 |

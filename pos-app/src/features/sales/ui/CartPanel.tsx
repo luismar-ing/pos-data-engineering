@@ -4,7 +4,7 @@ import { formatCents } from '../../../shared/utils/money';
 import type { PricedCart } from '../domain/cart';
 
 /** Carrito: líneas con − / +, total, Vaciar y Cobrar (SPEC-007 RF-3..RF-6). */
-export function CartPanel({ priced, onCheckout }: { priced: PricedCart; onCheckout: () => void }) {
+export function CartPanel({ priced, available, onCheckout }: { priced: PricedCart; available: Map<string, number>; onCheckout: () => void }) {
   const changeQuantity = useSessionStore((s) => s.changeCartQuantity);
   const removeFromCart = useSessionStore((s) => s.removeFromCart);
   const clearCart = useSessionStore((s) => s.clearCart);
@@ -27,9 +27,9 @@ export function CartPanel({ priced, onCheckout }: { priced: PricedCart; onChecko
               <Text style={styles.name}>{line.name}</Text>
               <Text style={styles.muted}>{formatCents(line.unitPriceCents)} c/u</Text>
             </View>
-            <SmallButton label="−" a11y={`Quitar una unidad de ${line.name}`} onPress={() => changeQuantity(line.productId, -1)} />
+            <SmallButton label="−" a11y={`Quitar una unidad de ${line.name}`} onPress={() => changeQuantity(line.productId, -1, available.get(line.productId) ?? 0)} />
             <Text style={styles.qty} accessibilityLabel={`${line.quantity} unidades`}>{line.quantity}</Text>
-            <SmallButton label="+" a11y={`Agregar una unidad de ${line.name}`} onPress={() => changeQuantity(line.productId, 1)} />
+            <SmallButton label="+" a11y={`Agregar una unidad de ${line.name}`} onPress={() => changeQuantity(line.productId, 1, available.get(line.productId) ?? 0)} />
             <Text style={styles.subtotal}>{formatCents(line.subtotalCents)}</Text>
           </View>
         ))}

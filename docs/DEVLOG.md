@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-03 — SPEC-005: Stock Leasing
+**Spec:** SPEC-005
+**Hecho:** Spec, plan y tareas aprobados (P1–P7 según propuesta; tasa por dispositivo). Backend: migración `0005` (FK a `devices`, `closed_at`, un préstamo activo por dispositivo y producto); `leaseService` reemplaza a `rollingAverage` (`calculateLeaseQty` pura con la tasa de los préstamos cerrados del dispositivo; `requestLeases` congela con `select … for update` en orden de id; `closeLeases` devuelve lo no vendido); rutas `POST /prestamos/request` y `/close`, una transacción por petición. App: migración v3 (`stock_leases` con `closing`, `quota_reported`, `renew_at`); `createSale` descuenta cuota en su transacción (`InsufficientQuotaError`); `leaseSync` (cerrar `closing` → pedir) al arrancar, al reconectar, cada 30 s, al abrir y cerrar sesión y tras cobrar; Venta con "Quedan N" / "Agotado" y tope del carrito; Inventario con "Disponible N". Cierra TD-007, TD-008, R-01 y R-02.
+**Verificación:** backend `npm test` 40/40 (8 dispositivos piden a la vez 23 unidades ⇒ se reparten exactamente 23); app `npm test` 30/30; `tsc` ok en ambos. T9 en teléfono: CA-3, CA-4, CA-5, CA-7 y CA-8 ok según el usuario. T10 (CA-9 con dos dispositivos) omitida por decisión del usuario ⇒ TD-027.
+**Decisiones:** (1) El servidor nunca devuelve stock sin informe del dispositivo: el plazo de 2 h 15 min de la propuesta original podía sobrevender (principio 1); cambian RF-14, RF-15, CA-8 y se quita RF-16. (2) Renovar = cerrar + pedir, ambos idempotentes; sin `renewed_from`. (3) Estado local `closing`: el préstamo deja de vender mientras se cierra, así el reintento informa lo mismo. (4) La tasa sale de lo informado en `close`, no de las ventas sincronizadas (aún no existen).
+**Bloqueos / pendientes:** TD-025 (cuota congelada de un teléfono perdido), TD-026 (reintentos de productos sin stock cada 30 s), TD-027 (prueba con dos dispositivos), TD-009 (SPEC-008 no debe volver a descontar stock).
+
 ## 2026-11-03 — SPEC-006: monitor de conectividad
 **Spec:** SPEC-006
 **Hecho:** Spec, plan y tareas aprobados (P1–P5 según propuesta). App: `expo-network` ~58.0.4; `core/network/connectivity.ts` (lógica pura: `probeServer` con `GET /health` y 3 s máx., `createConnectivity` con una comprobación a la vez, reintento cada 15 s solo sin conexión y `onReconnect` una vez por transición, `isCatalogStale` de 5 min); `core/network/monitor.ts` (cambios de red, `AppState` y suscripción al store); `apiFetch` marca sin conexión al fallar la red; `OfflineBanner` en el `screenLayout` de las pestañas; `App.tsx` reintenta registro y catálogo al reconectar. Cierra TD-016 y TD-022.

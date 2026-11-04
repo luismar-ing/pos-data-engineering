@@ -16,17 +16,23 @@ export const PAYMENT_METHODS = [
 ] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
 
-/** Suma `delta` a la línea (la crea si no existe). Tope en MAX_QUANTITY; en 0 o menos la quita (RF-3). */
-export function changeQuantity(cart: CartLine[], productId: string, delta: number): CartLine[] {
+/**
+ * Suma `delta` a la línea (la crea si no existe). En 0 o menos la quita (RF-3).
+ * Tope: lo disponible en el préstamo (SPEC-005 RF-8) y MAX_QUANTITY. Subir ya en el tope no cambia nada.
+ */
+export function changeQuantity(cart: CartLine[], productId: string, delta: number, max = MAX_QUANTITY): CartLine[] {
   const line = cart.find((l) => l.productId === productId);
-  const quantity = Math.min(MAX_QUANTITY, (line?.quantity ?? 0) + delta);
+  const current = line?.quantity ?? 0;
+  const cap = Math.min(max, MAX_QUANTITY);
+  if (delta > 0 && current >= cap) return cart;
+  const quantity = Math.min(cap, current + delta);
   if (quantity <= 0) return removeLine(cart, productId);
   if (!line) return [...cart, { productId, quantity }];
   return cart.map((l) => (l.productId === productId ? { ...l, quantity } : l));
 }
 
 /** Tocar un producto: agrega 1 o suma 1 si ya está (RF-2, cierra TD-016). */
-export const addProduct = (cart: CartLine[], productId: string) => changeQuantity(cart, productId, 1);
+export const addProduct = (cart: CartLine[], productId: string, max = MAX_QUANTITY) => changeQuantity(cart, productId, 1, max);
 
 export const removeLine = (cart: CartLine[], productId: string) => cart.filter((l) => l.productId !== productId);
 

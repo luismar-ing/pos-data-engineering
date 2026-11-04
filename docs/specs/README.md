@@ -8,7 +8,7 @@ Guía: [SPEC_GUIDE.md](SPEC_GUIDE.md) · Plantillas: [_template/](_template/)
 | [SPEC-002](002-infra-backend/spec.md) | Infraestructura backend (scripts, migraciones, validación, errores, healthcheck, tests) | 0 | backend | — | 🏁 Done |
 | [SPEC-003](003-identidad-dispositivo/spec.md) | Identidad de dispositivo y sesión | 1 | app, backend | 001, 002 | 🏁 Done |
 | [SPEC-004](004-catalogo/spec.md) | Catálogo: descarga y caché local | 1 | app, backend | 001, 002 | 🏁 Done |
-| SPEC-005 | Stock Leasing (cálculo, congelado, renovación, liberación) | 2 | backend, app | 001, 002, 003 | ⬜ Por redactar |
+| [SPEC-005](005-stock-leasing/spec.md) | Stock Leasing (cálculo, congelado, renovación, liberación) | 2 | backend, app | 001, 002, 003, 006 | 🏁 Done |
 | [SPEC-006](006-conectividad/spec.md) | Monitor de conectividad y modo offline | 2 | app | 001 | 🏁 Done |
 | [SPEC-007](007-flujo-venta/spec.md) | Flujo de venta (carrito → cobro → registro local) | 1 | app | 001, 003, 004 | 🏁 Done |
 | SPEC-008 | Bitácora + Batch Sync ETL idempotente | 2 | app, backend | 001, 003, 007 | ⬜ Por redactar |

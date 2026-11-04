@@ -1,6 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { getDatabase } from '../../../core/db/database';
 import { getDeviceIdentity } from '../../../core/device/deviceIdentity';
+import { CONSUME_QUOTA_SQL } from '../../leases/data/leaseSql';
 import type { CartLine, PaymentMethod } from '../domain/cart';
 import { computeTotalCents, validateSaleLines, type SaleLineInput } from '../domain/saleTotals';
 
@@ -40,6 +41,12 @@ export class ProductUnavailableError extends Error {
   }
 }
 
+export class InsufficientQuotaError extends Error {
+  constructor() {
+    super('No queda stock prestado suficiente para un producto del carrito; baja la cantidad o quítalo');
+  }
+}
+
 export interface CreateSaleInput {
   paymentMethod: PaymentMethod;
   /** Sin precio: se lee del catálogo local al cobrar (SPEC-007 P4). */
@@ -51,6 +58,7 @@ export interface CreateSaleInput {
  * El id del evento es el mismo que el de la venta, así el backend puede deduplicar por él.
  * Toma el dispositivo y la sesión abierta; sin sesión lanza `NoOpenSessionError` (SPEC-003 RF-8, RF-11).
  * Cobra el precio vigente del catálogo local; un producto inactivo lanza `ProductUnavailableError` (SPEC-007 RF-9).
+ * Descuenta cada línea de la cuota del préstamo; si no alcanza lanza `InsufficientQuotaError` y no escribe nada (SPEC-005 RF-7).
  */
 export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPayload> {
   if (input.lines.length === 0) throw new Error('La venta debe tener al menos una línea');
@@ -76,6 +84,10 @@ export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPay
       return { productId: line.productId, quantity: line.quantity, unitPriceCents: product.unit_price_cents };
     });
     validateSaleLines(lines);
+    for (const line of lines) {
+      const { changes } = await txn.runAsync(CONSUME_QUOTA_SQL, [line.quantity, line.productId, line.quantity]);
+      if (changes === 0) throw new InsufficientQuotaError();
+    }
 
     const sale: Sale = {
       id: randomUUID(),

@@ -10,11 +10,15 @@ interface SessionState {
     /** Hora de la última descarga correcta del catálogo (SPEC-004); al cambiar, Inventario recarga. */
     catalogSyncedAt: string | null;
     setCatalogSyncedAt: (syncedAt: string | null) => void;
+    /** Último cambio de los préstamos locales (SPEC-005); al cambiar, Venta e Inventario recargan lo disponible. */
+    leasesUpdatedAt: string | null;
+    setLeasesUpdatedAt: (updatedAt: string) => void;
     /** Carrito en memoria (SPEC-007 P3): solo producto y cantidad; el precio sale del catálogo local. */
     cart: CartLine[];
     setOnlineStatus: (status: boolean) => void;
-    addToCart: (productId: string) => void;
-    changeCartQuantity: (productId: string, delta: number) => void;
+    /** `max`: unidades disponibles en el préstamo (SPEC-005 RF-8). */
+    addToCart: (productId: string, max: number) => void;
+    changeCartQuantity: (productId: string, delta: number, max: number) => void;
     removeFromCart: (productId: string) => void;
     clearCart: () => void;
 }
@@ -25,10 +29,12 @@ export const useSessionStore = create<SessionState>((set) => ({
     setCurrentSession: (session) => set({ currentSession: session }),
     catalogSyncedAt: null,
     setCatalogSyncedAt: (syncedAt) => set({ catalogSyncedAt: syncedAt }),
+    leasesUpdatedAt: null,
+    setLeasesUpdatedAt: (updatedAt) => set({ leasesUpdatedAt: updatedAt }),
     cart: [],
     setOnlineStatus: (status) => set({ isOnline: status }),
-    addToCart: (productId) => set((state) => ({ cart: addProduct(state.cart, productId) })),
-    changeCartQuantity: (productId, delta) => set((state) => ({ cart: changeQuantity(state.cart, productId, delta) })),
+    addToCart: (productId, max) => set((state) => ({ cart: addProduct(state.cart, productId, max) })),
+    changeCartQuantity: (productId, delta, max) => set((state) => ({ cart: changeQuantity(state.cart, productId, delta, max) })),
     removeFromCart: (productId) => set((state) => ({ cart: removeLine(state.cart, productId) })),
     clearCart: () => set({ cart: [] }),
 }))

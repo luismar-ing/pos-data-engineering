@@ -35,6 +35,18 @@ test('bajar de 1 quita la línea; no pasa del máximo; quitar (CA-2)', () => {
   assert.deepEqual(removeLine(cart, 'agua'), [{ productId: 'papas', quantity: 1 }]);
 });
 
+test('tope por lo disponible en el préstamo (SPEC-005 RF-8, CA-3)', () => {
+  assert.deepEqual(addProduct([], 'agua', 0), []); // agotado: no se agrega
+  let cart = addProduct([], 'agua', 2);
+  cart = addProduct(cart, 'agua', 2);
+  cart = addProduct(cart, 'agua', 2);
+  assert.deepEqual(cart, [{ productId: 'agua', quantity: 2 }]);
+  assert.deepEqual(changeQuantity(cart, 'agua', 5, 3), [{ productId: 'agua', quantity: 3 }]);
+  // la cuota bajó a 1 tras renovar: + no la recorta, − sí baja
+  assert.deepEqual(changeQuantity(cart, 'agua', 1, 1), cart);
+  assert.deepEqual(changeQuantity(cart, 'agua', -1, 1), [{ productId: 'agua', quantity: 1 }]);
+});
+
 test('priceCart: subtotales, total entero y productos no disponibles fuera del total (CA-1, CA-7)', () => {
   const products = new Map([
     ['agua', { name: 'Agua', unit_price_cents: 1500 }],

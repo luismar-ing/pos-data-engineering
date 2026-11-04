@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getDeviceIdentity, setDeviceName, type DeviceIdentity } from '../../../core/device/deviceIdentity';
 import { ensureRegistered } from '../../../core/device/registration';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { leaseSync } from '../../leases/data/leaseSync';
 import { closeSession } from '../../session/data/sessionRepository';
 
 /** Ajustes: dispositivo y sesión abierta (SPEC-003 RF-13). */
@@ -52,7 +53,7 @@ export function SettingsScreen() {
   const confirmClose = () =>
     Alert.alert('Cerrar sesión', `¿Cerrar la sesión de ${session?.seller_name}? No podrás cobrar hasta abrir otra.`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: () => run(async () => { await closeSession(); setCurrentSession(null); }) },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: () => run(async () => { await closeSession(); setCurrentSession(null); void leaseSync(); /* SPEC-005 RF-13 */ }) },
     ]);
 
   return (

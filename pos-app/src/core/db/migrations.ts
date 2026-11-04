@@ -85,4 +85,23 @@ export const MIGRATIONS: string[] = [
   -- Nulo solo en ventas anteriores a SPEC-003.
   alter table sales add column session_id text references sessions(id);
   `,
+
+  // v3 — SPEC-005: préstamos de stock. SQLite no cambia un check: se rehace la tabla (estaba vacía).
+  // `closing` = se está cerrando en el servidor: no vende y el reintento informa el mismo `quota_reported`.
+  `
+  drop table stock_leases;
+
+  create table stock_leases (
+    id text primary key,
+    product_id text not null references products(id),
+    quota_total integer not null check (quota_total >= 0),
+    quota_used integer not null default 0 check (quota_used >= 0 and quota_used <= quota_total),
+    quota_reported integer,
+    status text not null default 'active' check (status in ('active', 'closing', 'released')),
+    issued_at text not null,
+    renew_at text not null
+  );
+  -- RF-5: un préstamo activo por producto.
+  create unique index idx_stock_leases_one_active on stock_leases(product_id) where status = 'active';
+  `,
 ];
