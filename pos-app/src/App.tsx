@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { getDatabase } from './core/db/database';
 import { getDeviceIdentity } from './core/device/deviceIdentity';
 import { ensureRegistered } from './core/device/registration';
+import { isCatalogStale } from './core/network/connectivity';
+import { onReconnect, startConnectivityMonitor } from './core/network/monitor';
 import { getCatalogSyncedAt } from './features/inventory/data/catalogRepository';
 import { syncCatalog } from './features/inventory/data/catalogSync';
 import { getOpenSession } from './features/session/data/sessionRepository';
@@ -25,6 +27,12 @@ export default function App() {
         void ensureRegistered(); // RF-2: en segundo plano, sin bloquear la UI
         // SPEC-004 RF-1: sin red sigue con el catálogo guardado; el error se ve al actualizar desde Inventario.
         syncCatalog().catch(() => {});
+        // SPEC-006 RF-7: al volver la red, registro pendiente (TD-022) y catálogo si tiene más de 5 min (P4).
+        onReconnect(() => {
+          void ensureRegistered();
+          if (isCatalogStale(useSessionStore.getState().catalogSyncedAt, Date.now())) syncCatalog().catch(() => {});
+        });
+        startConnectivityMonitor();
       })
       .catch((error: unknown) => {
         console.error('Error al abrir la base de datos local', error);

@@ -16,7 +16,6 @@ export function ensureRegistered(force = false): Promise<boolean> {
   return inFlight;
 }
 
-// shortcut: solo se reintenta al arrancar o al pedirlo desde Ajustes; reintentar al recuperar red llega con el monitor de SPEC-006.
 async function register(force: boolean): Promise<boolean> {
   const identity = await getDeviceIdentity();
   if (identity.registeredAt && !force) return true;

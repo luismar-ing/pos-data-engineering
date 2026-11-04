@@ -10,9 +10,7 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-008 | 🟠 | backend | `services/rollingAverage.ts` | Tasa de consumo global por producto, no por dispositivo (el planteamiento pide por dispositivo). Lectura de stock y cálculo sin bloqueo ⇒ condición de carrera | SPEC-005 |
 | TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, descontar stock/lease, respuesta por evento | SPEC-008 |
 | TD-013 | 🟡 | app | — | La app solo prueba migraciones (`npm test`, `node:sqlite`); faltan pruebas de repositorios y UI | cada spec de app |
-| TD-016 | ⚪ | app | `sessionStore.ts` | `isOnline` no está conectado al estado real de red (lo del carrito se resolvió en SPEC-007) | SPEC-006 |
-| TD-022 | ⚪ | app | `core/device/registration.ts` | Sin red, el registro se reintenta solo al abrir la app o desde Ajustes; no al volver la red | SPEC-006 |
-| TD-024 | ⚪ | app | `package.json` | `expo-doctor` 19/20: salieron parches `expo` 58.0.22 y `expo-sqlite` 58.0.15 (instalados 58.0.21 / 58.0.14) | `npx expo install --check` cuando se decida |
+| TD-024 | ⚪ | app | `package.json` | `expo-doctor` 19/20: salieron `expo` 58.0.23, `expo-sqlite` 58.0.15 y `react-native-safe-area-context` 5.11.1 (instalados 58.0.21 / 58.0.14 / 5.10.1) | `npx expo install --check` cuando se decida |
 
 ## Riesgos de diseño
 
@@ -45,3 +43,5 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-019 | `sales.device_id` sin FK a `devices` | SPEC-003 (migración 0004) | 2026-10-30 |
 | TD-023 | Botón "Venta de prueba" en Venta | SPEC-007 (carrito y cobro) | 2026-11-01 |
 | TD-021 | `npm audit`: `body-parser` < 2.4 (alta) y `qs` < 6.17 (moderada) | SPEC-002 (`npm audit fix`: body-parser 2.4.0, qs 6.17.1) | 2026-10-30 |
+| TD-016 | `isOnline` sin conexión al estado real de red | SPEC-006 (monitor de conectividad) | 2026-11-03 |
+| TD-022 | Registro sin reintento al volver la red | SPEC-006 (`onReconnect`) | 2026-11-03 |

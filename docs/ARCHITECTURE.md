@@ -17,7 +17,7 @@
 │ SQLite local: products, stock_leases, sales,          │        │ PostgreSQL: products, devices, sales,  │
 │   sale_items, settings, sessions,                     │        │   sale_items, stock_leases             │
 │   event_log (append-only)                             │        │                                        │
-│ Sync worker (Batch ETL) · Monitor de red (NetInfo*)   │        │                                        │
+│ Sync worker* · Monitor de red (expo-network)          │        │                                        │
 └───────────────────────────────────────────────────────┘        └────────────────────────────────────────┘
 * = aún no existe
 ```
@@ -33,13 +33,14 @@ src/
   core/config.ts                    # API_URL desde EXPO_PUBLIC_API_URL (.env.local)
   core/api/client.ts                # apiFetch + ApiError (forma de error del backend; sin red ⇒ NETWORK_ERROR)
   core/device/                      # identidad (id + secreto en expo-secure-store) y registro
-  core/network/*                    # monitor de conectividad
+  core/network/                     # monitor de conectividad: connectivity.ts (lógica pura) + monitor.ts (expo-network, AppState)
   core/sync/*                       # pipeline Batch ETL
   features/<feature>/
     data/                           # repositorios (SQL)
     domain/*                        # reglas puras, testeables
     ui/*                            # pantallas y componentes
   shared/store/                     # stores Zustand
+  shared/ui/OfflineBanner.tsx       # franja "Sin conexión" sobre cada pestaña
   shared/utils/money.ts             # formatCents, parseMoneyToCents, computeChangeCents
 ```
 
@@ -70,13 +71,21 @@ Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck`
 2. Con red, `POST /devices/register` (idempotente). El servidor guarda solo `sha256(secreto)` en `devices.token_hash`.
 3. `/prestamos` y `/sync` exigen `Authorization: Bearer <secreto>`. Sync rechaza eventos cuyo `device_id` no sea el del dispositivo autenticado.
 4. Para cobrar hace falta una sesión abierta (nombre del vendedor), una a la vez por dispositivo. Abrir y cerrar funciona sin red y escribe `session_opened` / `session_closed` en `event_log`. Cada venta lleva `session_id`.
-5. Sin red, el registro queda pendiente. Se reintenta al abrir la app o desde Ajustes; no hay reintento automático al volver la red (TD-022).
+5. Sin red, el registro queda pendiente. Se reintenta al abrir la app, desde Ajustes y al volver la red (SPEC-006).
 
 ### 3.0b Catálogo (SPEC-004)
 1. Al abrir la app (sin esperar) o con "Actualizar" en Inventario: `GET /catalogo`. Una sola descarga a la vez.
 2. `parseCatalog` valida la respuesta. Si un producto es inválido, se descarta toda la descarga.
 3. En una transacción exclusiva: todos los productos locales a `active = 0`; upsert de cada producto recibido con `active = 1`; `catalog_synced_at` en `settings`. Lo que no vino queda inactivo (nunca se borra, por las FK); lo que vuelve se reactiva.
 4. Sin red se usa el catálogo guardado. Cada venta conserva el precio con que se cobró (`sale_items.unit_price_cents`).
+5. Al volver la red se descarga de nuevo si la última descarga correcta tiene más de 5 min (SPEC-006).
+
+### 3.0c Conectividad (SPEC-006)
+1. Un único estado: `isOnline` en el store. **En línea = `GET /health` responde 200** en 3 s o menos. Un 503 (Postgres caído), un Wi-Fi sin internet o un servidor inalcanzable cuentan como sin conexión. Sin `EXPO_PUBLIC_API_URL`, siempre sin conexión.
+2. Se comprueba al arrancar, en cada cambio de red de `expo-network` y al volver la app a primer plano. Si el teléfono dice que no hay red, pasa a sin conexión sin petición. Si `apiFetch` falla por red, también.
+3. Sin conexión se vuelve a comprobar cada 15 s; en línea no hay comprobación periódica. Una sola comprobación a la vez.
+4. Al pasar de sin conexión a en línea, `onReconnect` avisa una vez por transición: hoy reintenta el registro y el catálogo (si tiene más de 5 min). SPEC-005 y SPEC-008 se suscriben aquí.
+5. El cobro nunca consulta `isOnline`.
 
 ### 3.1 Venta online
 1. Vendedor arma carrito (SPEC-007): el carrito guarda solo `{ productId, quantity }` en memoria; nombre y precio se leen del catálogo local al mostrarlo. Elige método de pago (`cash` / `card` / `transfer`) y confirma.

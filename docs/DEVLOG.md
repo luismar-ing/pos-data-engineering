@@ -12,6 +12,14 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-03 — SPEC-006: monitor de conectividad
+**Spec:** SPEC-006
+**Hecho:** Spec, plan y tareas aprobados (P1–P5 según propuesta). App: `expo-network` ~58.0.4; `core/network/connectivity.ts` (lógica pura: `probeServer` con `GET /health` y 3 s máx., `createConnectivity` con una comprobación a la vez, reintento cada 15 s solo sin conexión y `onReconnect` una vez por transición, `isCatalogStale` de 5 min); `core/network/monitor.ts` (cambios de red, `AppState` y suscripción al store); `apiFetch` marca sin conexión al fallar la red; `OfflineBanner` en el `screenLayout` de las pestañas; `App.tsx` reintenta registro y catálogo al reconectar. Cierra TD-016 y TD-022.
+**Verificación:** app `npm test` 22/22; `tsc` ok. T6 en teléfono: CA-1..CA-7 ok según el usuario. CA-3 se vio también con Postgres detenido (503 ⇒ sin conexión).
+**Hallazgos en T6:** (1) la franja salía al abrir con red: `.env.local` apuntaba a la IP vieja de la PC; la franja tenía razón. (2) En el teléfono de prueba el modo avión deja el Wi-Fi activo, así que no corta la red: CA-1/CA-2 se reescribieron como "Wi-Fi y datos apagados".
+**Decisiones:** "en línea" = el servidor responde 200, no el estado de red del sistema; sin `markOffline`: `apiFetch` cambia el store y el monitor reacciona a la transición. Sin cambios de backend, esquema ni contratos.
+**Bloqueos / pendientes:** TD-024 (ahora también `react-native-safe-area-context` 5.11.1). SPEC-005 necesita decidir si la tasa de consumo es por dispositivo o global.
+
 ## 2026-11-01 — SPEC-007: flujo de venta
 **Spec:** SPEC-007
 **Hecho:** Spec, plan y tareas aprobados (P1–P5 según propuesta). App: `cart.ts` (agregar/sumar, −/+, tope 999, `priceCart`, búsqueda sin acentos, métodos de pago), `shared/utils/money.ts` (formato, monto recibido, cambio); carrito en el store solo con `{ productId, quantity }`; `createSale` lee precio y `active` dentro de su transacción (`ProductUnavailableError`); pantalla Venta con buscador, `CartPanel` y `CheckoutModal` (un cobro = una venta con `useRef`). Quitado "Venta de prueba" (TD-023); TD-016 queda solo por `isOnline`.
