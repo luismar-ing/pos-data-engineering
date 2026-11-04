@@ -104,4 +104,9 @@ export const MIGRATIONS: string[] = [
   -- RF-5: un préstamo activo por producto.
   create unique index idx_stock_leases_one_active on stock_leases(product_id) where status = 'active';
   `,
+
+  // v4 — SPEC-008: motivo del rechazo de un evento al sincronizar (sync_status = 'failed').
+  `
+  alter table event_log add column sync_error text;
+  `,
 ];

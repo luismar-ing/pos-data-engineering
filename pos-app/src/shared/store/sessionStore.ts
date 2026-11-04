@@ -13,6 +13,9 @@ interface SessionState {
     /** Último cambio de los préstamos locales (SPEC-005); al cambiar, Venta e Inventario recargan lo disponible. */
     leasesUpdatedAt: string | null;
     setLeasesUpdatedAt: (updatedAt: string) => void;
+    /** Último envío correcto de la bitácora (SPEC-008); al cambiar, Ajustes recarga el resumen. */
+    eventsSyncedAt: string | null;
+    setEventsSyncedAt: (syncedAt: string) => void;
     /** Carrito en memoria (SPEC-007 P3): solo producto y cantidad; el precio sale del catálogo local. */
     cart: CartLine[];
     setOnlineStatus: (status: boolean) => void;
@@ -31,6 +34,8 @@ export const useSessionStore = create<SessionState>((set) => ({
     setCatalogSyncedAt: (syncedAt) => set({ catalogSyncedAt: syncedAt }),
     leasesUpdatedAt: null,
     setLeasesUpdatedAt: (updatedAt) => set({ leasesUpdatedAt: updatedAt }),
+    eventsSyncedAt: null,
+    setEventsSyncedAt: (syncedAt) => set({ eventsSyncedAt: syncedAt }),
     cart: [],
     setOnlineStatus: (status) => set({ isOnline: status }),
     addToCart: (productId, max) => set((state) => ({ cart: addProduct(state.cart, productId, max) })),

@@ -1,16 +1,21 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getDeviceIdentity, setDeviceName, type DeviceIdentity } from '../../../core/device/deviceIdentity';
 import { ensureRegistered } from '../../../core/device/registration';
+import { getSyncSummary, type SyncSummary } from '../../../core/sync/syncRepository';
+import { syncEvents } from '../../../core/sync/syncWorker';
 import { useSessionStore } from '../../../shared/store/sessionStore';
 import { leaseSync } from '../../leases/data/leaseSync';
 import { closeSession } from '../../session/data/sessionRepository';
 
-/** Ajustes: dispositivo y sesión abierta (SPEC-003 RF-13). */
+/** Ajustes: dispositivo, sesión abierta (SPEC-003 RF-13) y estado de la sincronización (SPEC-008 RF-16). */
 export function SettingsScreen() {
   const session = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
+  const isOnline = useSessionStore((s) => s.isOnline);
+  const eventsSyncedAt = useSessionStore((s) => s.eventsSyncedAt);
+  const [summary, setSummary] = useState<SyncSummary | null>(null);
   const [identity, setIdentity] = useState<DeviceIdentity | null>(null);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,6 +24,7 @@ export function SettingsScreen() {
     const current = await getDeviceIdentity();
     setIdentity(current);
     setName(current.name);
+    setSummary(await getSyncSummary());
   }, []);
 
   useFocusEffect(
@@ -26,6 +32,11 @@ export function SettingsScreen() {
       reload().catch((error) => console.error('Error al leer la identidad del dispositivo', error));
     }, [reload])
   );
+
+  // Un envío en segundo plano cambia los contadores aunque la pantalla siga abierta.
+  useEffect(() => {
+    getSyncSummary().then(setSummary).catch(() => {});
+  }, [eventsSyncedAt]);
 
   async function run(task: () => Promise<unknown>) {
     setBusy(true);
@@ -53,7 +64,7 @@ export function SettingsScreen() {
   const confirmClose = () =>
     Alert.alert('Cerrar sesión', `¿Cerrar la sesión de ${session?.seller_name}? No podrás cobrar hasta abrir otra.`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: () => run(async () => { await closeSession(); setCurrentSession(null); void leaseSync(); /* SPEC-005 RF-13 */ }) },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: () => run(async () => { await closeSession(); setCurrentSession(null); void leaseSync(); /* SPEC-005 RF-13 */ void syncEvents(); }) },
     ]);
 
   return (
@@ -80,6 +91,16 @@ export function SettingsScreen() {
       ) : (
         <Text>No hay sesión abierta. Ábrela desde Venta.</Text>
       )}
+
+      <Text style={styles.section}>Sincronización</Text>
+      <Text accessibilityLabel={summary ? `${summary.pending} pendientes, ${summary.failed} fallidos` : undefined}>
+        {summary
+          ? `Pendientes ${summary.pending} · Fallidos ${summary.failed} · Último envío ${
+              summary.syncedAt ? new Date(summary.syncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
+            }`
+          : '…'}
+      </Text>
+      <Button title="Sincronizar ahora" onPress={() => run(syncEvents)} disabled={busy || !isOnline} />
     </ScrollView>
   );
 }

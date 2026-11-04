@@ -13,13 +13,13 @@ Objetivo: vender con red de punta a punta.
 - SPEC-004 Catálogo: descarga y caché local
 - SPEC-007 Flujo de venta (carrito → cobro → registro local)
 
-## Fase 2 — Offline + Stock Leasing  ⭐ núcleo del proyecto · ⏳ siguiente
+## Fase 2 — Offline + Stock Leasing  ⭐ núcleo del proyecto · ✅ cerrada (prueba con 2 dispositivos en fase 4, TD-027)
 Objetivo: vender sin red sin sobrevender.
 - SPEC-005 Stock Leasing (cálculo, congelado, renovación, liberación)
 - SPEC-006 Monitor de conectividad y modo offline
 - SPEC-008 Bitácora + Batch Sync ETL idempotente
 
-## Fase 3 — Valor agregado
+## Fase 3 — Valor agregado  ⏳ siguiente
 - SPEC-009 Edge Analytics (Burn Rate, Runout Time, top productos)
 - SPEC-010 Recibos QR offline
 

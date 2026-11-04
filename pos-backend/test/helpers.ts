@@ -8,7 +8,7 @@ export { pool };
 
 export async function resetDb(): Promise<void> {
     await migrate(pool);
-    await pool.query('truncate sale_items, sales, stock_leases, products, devices cascade');
+    await pool.query('truncate sync_events, sessions, sale_items, sales, stock_leases, products, devices cascade');
     await seed(pool);
 }
 

@@ -6,7 +6,8 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Sev. | Repo | Ubicación | Problema | Se resuelve en |
 |---|---|---|---|---|---|
-| TD-009 | 🟡 | backend | `routes/sync.ts` | Ya valida la forma y usa una transacción por evento (SPEC-001). Falta: validación completa de tipos, inserción por lotes, respuesta por evento, y conciliar lo informado en `close` con las ventas sincronizadas. **No** descontar stock al sincronizar: ya salió al prestarse (SPEC-005) | SPEC-008 |
+| TD-028 | 🟡 | backend | — | No se concilia lo que cada teléfono informó al cerrar préstamos con las ventas que llegan por sync (SPEC-008 P6): las líneas de venta no dicen de qué préstamo salieron | Spec de administración (por definir) |
+| TD-029 | ⚪ | app | `core/sync/syncBatch.ts` | Un evento de más de 80 kB (venta con cientos de líneas) va solo en su lote y podría pasar del límite de 100 kB del servidor (413): frenaría la cola en ese evento | Si aparecen ventas tan grandes |
 | TD-025 | 🟡 | backend | `services/leaseService.ts` | La cuota de un teléfono perdido o desinstalado queda congelada para siempre: el servidor solo devuelve stock con `close` (SPEC-005 RF-15). Falta una forma de liberarla a mano | Spec de administración (por definir) |
 | TD-026 | ⚪ | app | `features/leases/data/leaseSync.ts` | Cada ciclo (30 s) vuelve a pedir préstamo de todos los productos sin stock; con catálogos grandes son varias peticiones inútiles | Cuando el catálogo crezca |
 | TD-027 | 🟡 | app, backend | — | CA-9 de SPEC-005 (dos dispositivos sin red no superan el stock) no se probó con dos dispositivos reales; está cubierto por partes: pedidos simultáneos en `lease.test.ts` y descuento local en `leases.test.mjs` | Fase 4 (pruebas con ≥ 2 dispositivos) |
@@ -48,3 +49,4 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-008 | Tasa global por producto y lectura de stock sin bloqueo | SPEC-005 (tasa por dispositivo; fila de producto bloqueada) | 2026-11-03 |
 | R-01 | Lease que expira con el dispositivo sin red vendiendo | SPEC-005 (el servidor nunca devuelve stock sin `close`) | 2026-11-03 |
 | R-02 | Reloj del dispositivo desfasado en el promedio móvil | SPEC-005 (tasa con hora del servidor; renovación con duración relativa) | 2026-11-03 |
+| TD-009 | `/sync/events`: lotes, validación completa, resultado por evento; no descontar stock al recibir ventas | SPEC-008 (`syncService`, `sync_events`) | 2026-11-03 |

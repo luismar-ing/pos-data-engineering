@@ -16,10 +16,9 @@
 │        │                                              │        │        │                               │
 │ SQLite local: products, stock_leases, sales,          │        │ PostgreSQL: products, devices, sales,  │
 │   sale_items, settings, sessions,                     │        │   sale_items, stock_leases             │
-│   event_log (append-only)                             │        │                                        │
-│ Sync worker* · Monitor de red (expo-network)          │        │                                        │
+│   event_log (append-only)                             │        │   sync_events, sessions                │
+│ Sync worker (ETL) · Monitor de red (expo-network)     │        │                                        │
 └───────────────────────────────────────────────────────┘        └────────────────────────────────────────┘
-* = aún no existe
 ```
 
 ## 2. Estructura de código
@@ -34,7 +33,7 @@ src/
   core/api/client.ts                # apiFetch + ApiError (forma de error del backend; sin red ⇒ NETWORK_ERROR)
   core/device/                      # identidad (id + secreto en expo-secure-store) y registro
   core/network/                     # monitor de conectividad: connectivity.ts (lógica pura) + monitor.ts (expo-network, AppState)
-  core/sync/*                       # pipeline Batch ETL
+  core/sync/                        # Batch ETL: syncSql + syncBatch (puros), syncRepository, syncWorker
   features/<feature>/
     data/                           # repositorios (SQL)
     domain/*                        # reglas puras, testeables
@@ -91,16 +90,17 @@ Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck`
 1. Vendedor arma carrito (SPEC-007): el carrito guarda solo `{ productId, quantity }` en memoria; nombre y precio se leen del catálogo local al mostrarlo. Elige método de pago (`cash` / `card` / `transfer`) y confirma.
 2. `createSale`, en una transacción exclusiva: lee la sesión abierta y el precio vigente y `active` de cada producto (inactivo ⇒ `ProductUnavailableError`, nada se escribe); descuenta cada línea de la cuota del préstamo activo (no alcanza ⇒ `InsufficientQuotaError`, nada se escribe); escribe `sale` + `sale_items` + evento `sale_created` en `event_log`. Un toque de "Confirmar" = una venta.
 3. Tras cobrar, el ciclo de préstamos corre en segundo plano por si queda menos del 20 % (SPEC-005).
-4. El sync worker envía el evento de inmediato (lote de 1) → servidor responde → `sync_status = 'synced'`.
+4. Tras cobrar, `syncEvents()` envía los pendientes en segundo plano; con red, la venta llega al servidor de inmediato (SPEC-008).
 
 ### 3.2 Venta offline
 Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin red funciona igual. Sin cuota el producto sale "Agotado". Un préstamo vencido sin red sigue vendiendo lo que le queda. Los eventos quedan `pending`.
 
-### 3.3 Reconexión (Batch ETL)
-1. **Extract:** `select * from event_log where sync_status = 'pending' order by created_at limit N`.
-2. **Transform:** agregar `device_id`, `batch_id`, `sent_at`.
-3. **Load:** `POST /sync/events` → servidor inserta con `on conflict (event_id) do nothing`.
-4. Marcar como `synced` los eventos confirmados (insertados **o** duplicados).
+### 3.3 Batch ETL (SPEC-008)
+`syncEvents()` (una ejecución a la vez) corre tras cobrar, al abrir y cerrar sesión, al reconectar, cada 30 s y con "Sincronizar ahora" en Ajustes. Sin pendientes no hace ninguna petición. En bucle hasta vaciar la cola:
+1. **Extract:** hasta 50 eventos `pending` de `event_log`, en orden `created_at, id`.
+2. **Transform:** `toWireEvent` agrega `device_id` y deja el `payload` intacto; `fitBatch` recorta el lote a menos de 80 kB; el lote lleva `batch_id` y `sent_at`.
+3. **Load:** `POST /sync/events`. El servidor procesa cada evento en su propia transacción: `sync_events … on conflict do nothing` (⇒ `duplicate`), luego la venta o la sesión. Una forma inválida, otro dispositivo o una restricción de la BD ⇒ `rejected` sin afectar a los demás.
+4. **Marcado local** (una transacción): `inserted`/`duplicate` ⇒ `synced` + `synced_at`; `rejected` ⇒ `failed` + `sync_error`. Error de red o de servidor ⇒ siguen `pending`. Solo cambian esas columnas, nunca el evento.
 
 ### 3.4 Stock Leasing (SPEC-005)
 1. **Ciclo** (`leaseSync`, una ejecución a la vez): al arrancar, al abrir y cerrar sesión, al reconectar, cada 30 s y tras cobrar. Solo corre con red.
@@ -123,7 +123,7 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 | `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2) |
 | `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004) |
 | `sessions` | Sesiones de vendedor; índice único parcial ⇒ solo una con `closed_at is null` (v2) |
-| `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` en `payload_json` |
+| `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` y `session_opened`/`session_closed` llevan `{ session }` en `payload_json`; `sync_status`, `synced_at`, `sync_error` (v4) |
 
 ### 4.2 PostgreSQL (backend) — `pos-backend/db/migrations/NNNN_*.sql`
 Se aplican con `npm run db:migrate` (ADR-0006): una transacción por archivo, registradas en `schema_migrations(version, applied_at)`.
@@ -134,6 +134,8 @@ Se aplican con `npm run db:migrate` (ADR-0006): una transacción por archivo, re
 | `devices` | Dispositivos registrados; `token_hash` = sha256 del secreto (índice único) |
 | `sales` / `sale_items` | Ventas recibidas; PK `sales.id` ⇒ idempotencia; FK `sales.device_id → devices`; `session_id` |
 | `stock_leases` | Préstamos emitidos: FK a `devices`, `status` `active`/`released`, `closed_at`; uno activo por dispositivo y producto (0005) |
+| `sync_events` | Un registro por evento recibido (`event_id` PK, `device_id`, `event_type`, `batch_id`, `received_at`): idempotencia de todos los tipos (0006) |
+| `sessions` | Sesiones de vendedor recibidas: `seller_name`, `opened_at`, `closed_at` (cualquiera puede llegar primero) (0006) |
 
 ## 5. Contratos HTTP
 
@@ -146,20 +148,24 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 | `GET /catalogo` | — | `[{ id, name, category, unit_price_cents, active }]` | 500 | ✅ implementado |
 | `POST /prestamos/request` 🔒 | `{ product_ids: uuid[] }` (1–200, sin repetidos) | `{ leases: Lease[], unavailable: uuid[] }`: el préstamo activo de cada producto (existente o nuevo, ya congelado); `unavailable` = sin stock, inactivo o inexistente | 400 `VALIDATION_ERROR`, 401 | ✅ implementado |
 | `POST /prestamos/close` 🔒 | `{ leases: [{ lease_id: uuid, quota_used: int ≥ 0 }] }` (1–200) | `{ closed: uuid[] }`: devuelve `quota_total - quota_used` al stock central; incluye los ya cerrados (idempotente) | 400 `VALIDATION_ERROR`, 400 `INVALID_QUOTA_USED`, 404 `LEASE_NOT_FOUND`, 401 | ✅ implementado |
-| `POST /sync/events` 🔒 | ver abajo | `{ received, inserted, duplicated }` | 400 `VALIDATION_ERROR` si `events` no es arreglo o un evento no tiene la forma esperada; 401; 403 si `device_id` no es el autenticado | 🟡 transacción por evento; lotes y validación completa en SPEC-008 |
+| `POST /sync/events` 🔒 | ver abajo (1–50 eventos) | `{ batch_id, results: [{ event_id, status, reason? }], inserted, duplicated, rejected }` | 400 `VALIDATION_ERROR` si el sobre es inválido (sin `batch_id`, `events` vacío o > 50, `event_id` no UUID o repetido); 401; 413. Un evento inválido o de otro dispositivo **no** da error: va como `rejected` | ✅ implementado |
 
 `Lease = { id, product_id, quota_total, quota_used, issued_at, expires_at }` — `expires_at` (3 min) solo indica cuándo renovar: el servidor nunca devuelve stock sin un `close`. Renovar = `close` + `request`. En ambas rutas, si un elemento falla, la petición entera hace rollback.
 
 `POST /sync/events` — request:
 ```json
-{ "events": [ {
-    "event_id": "<uuid = sale.id>", "event_type": "sale_created", "device_id": "…", "created_at": "ISO-8601",
-    "payload": {
-      "sale":  { "id", "device_id", "session_id?", "total_cents", "payment_method", "created_at" },
-      "items": [ { "id", "sale_id", "product_id", "quantity", "unit_price_cents" } ]
-    } } ] }
+{ "batch_id": "<uuid>", "sent_at": "ISO-8601",
+  "events": [ {
+    "event_id": "<uuid>", "event_type": "sale_created" | "session_opened" | "session_closed",
+    "device_id": "…", "created_at": "ISO-8601", "payload": … } ] }
 ```
-El `payload` es exactamente el `payload_json` guardado en `event_log` de la app. Reenviar un evento ya recibido cuenta como `duplicated` y no inserta nada.
+| `event_type` | `payload` |
+|---|---|
+| `sale_created` | `{ sale: { id = event_id, device_id, session_id?, total_cents = Σ líneas, payment_method, created_at }, items: [ { id, sale_id = event_id, product_id, quantity > 0, unit_price_cents ≥ 0 } ] }` |
+| `session_opened` | `{ session: { id, device_id, seller_name, opened_at, closed_at: null } }` |
+| `session_closed` | `{ session: { id, device_id, seller_name, opened_at, closed_at } }` |
+
+`status` por evento: `inserted` (guardado), `duplicate` (ya recibido: no cambia nada), `rejected` (`reason`: forma inválida, otro dispositivo o una restricción de la BD). Cada evento se guarda en su propia transacción; un `rejected` no afecta a los demás. El `payload` es exactamente el `payload_json` guardado en `event_log` de la app. Recibir ventas no cambia `central_stock`.
 
 🔒 = exige `Authorization: Bearer <secreto>` de un dispositivo registrado.
 
@@ -175,7 +181,6 @@ Errores (todas las rutas, ADR-0006):
 | `PAYLOAD_TOO_LARGE` | 413 | Cuerpo mayor que el límite de `express.json()` (100 kB) |
 | `BAD_REQUEST` | 4xx | Otro error del parser de cuerpo (p. ej. 415 codificación no soportada) |
 | `UNAUTHORIZED` | 401 | Ruta 🔒 sin credencial o con una desconocida |
-| `FORBIDDEN` | 403 | El evento o la venta es de otro dispositivo |
 | `DEVICE_CONFLICT` | 409 | Registro con un `device_id` ya usado con otro secreto |
 | `NOT_FOUND` | 404 | Ruta inexistente |
 | `LEASE_NOT_FOUND` | 404 | El préstamo no existe o es de otro dispositivo |
