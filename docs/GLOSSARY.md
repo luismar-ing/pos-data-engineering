@@ -12,8 +12,8 @@
 | Evento | `event`, `event_id` (UUID) | Hecho inmutable (p. ej. venta) generado en el dispositivo |
 | Sincronización por lotes | `sync`, Batch ETL | Envío de eventos pendientes al servidor al recuperar red |
 | Idempotente | `on conflict do nothing` | Reenviar un evento no lo duplica |
-| Burn Rate | `burnRate` | Velocidad de venta local (unidades/min) |
-| Runout Time | `runoutTime` | Tiempo estimado hasta agotar la cuota local |
+| Burn Rate | `burnRate` (`features/analytics/domain/metrics.ts`) | Velocidad de venta local: unidades del teléfono en los últimos 10 min ÷ minutos desde la primera de ellas (entre 1 y 10) |
+| Runout Time | `buildRunout` (`metrics.ts`) | Tiempo estimado hasta agotar la cuota local: disponible ÷ Burn Rate |
 | Recibo QR | `receiptQr` | Recibo completo comprimido dentro de un código QR |
 | Dispositivo | `device_id` | Identificador estable del teléfono/terminal POS |
 | Sesión | `session_id` | Periodo de trabajo de un vendedor en un dispositivo |

@@ -38,6 +38,7 @@ src/
     data/                           # repositorios (SQL)
     domain/*                        # reglas puras, testeables
     ui/*                            # pantallas y componentes
+  features/analytics/               # panel Dashboard (SPEC-009): analyticsSql + metrics (puros), analyticsRepository, DashboardScreen
   shared/store/                     # stores Zustand
   shared/ui/OfflineBanner.tsx       # franja "Sin conexión" sobre cada pestaña
   shared/utils/money.ts             # formatCents, parseMoneyToCents, computeChangeCents
@@ -109,6 +110,12 @@ Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin re
 4. **Cuota** = `ceil(unidades / minutos × 3 × 1.2)`, mínimo 5, tope `central_stock`. Unidades y minutos salen de los préstamos que ese dispositivo cerró en los últimos 5 min (hora del servidor).
 5. El servidor **nunca** devuelve stock sin un `close`: la cuota de un teléfono sin red queda congelada para él. Al sincronizar ventas (SPEC-008) no se vuelve a descontar stock.
 
+### 3.5 Edge Analytics (SPEC-009)
+1. `getDashboard(now)` solo lee SQLite, con o sin red. Corre al enfocar Dashboard, cada 15 s mientras está visible y cuando cambia `leasesUpdatedAt` (tras cobrar y al cambiar préstamos); una consulta a la vez.
+2. **Burn Rate:** unidades vendidas por **este teléfono** (de cualquier sesión) en los últimos 10 min ÷ minutos desde la primera de esas ventas, entre 1 y 10. Por producto y en total.
+3. **Runout Time:** disponible del préstamo activo ÷ Burn Rate. Lista: productos con ventas en la ventana y préstamos agotados; agotados primero, luego del que se acaba antes; < 5 min en ámbar. Préstamos con cuota sin ventas solo se cuentan.
+4. **Sesión:** la abierta o, si no hay, la última cerrada. Top 5 por unidades con ingreso; ventas, unidades, ingreso y ticket promedio (centavos enteros).
+
 ## 4. Modelo de datos
 
 Reglas comunes (SPEC-001): venta = cabecera + líneas en ambos lados; montos en centavos enteros (`*_cents`); el id de la venta es también el id de su evento `sale_created` y la clave de idempotencia en el servidor.
@@ -120,7 +127,7 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 |---|---|
 | `products` | Copia local del catálogo (`unit_price_cents`); `active = 0` si ya no viene del servidor. No guarda stock: el stock vendible offline es la suma de leases activos |
 | `stock_leases` | Préstamos recibidos (v3): `quota_total`, `quota_used ≤ quota_total`, `quota_reported`, `status` `active`/`closing`/`released`, `issued_at` (servidor), `renew_at` (hora local); uno activo por producto; `id` lo emite el servidor |
-| `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2) |
+| `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2); índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)` para el panel (v5) |
 | `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004) |
 | `sessions` | Sesiones de vendedor; índice único parcial ⇒ solo una con `closed_at is null` (v2) |
 | `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` y `session_opened`/`session_closed` llevan `{ session }` en `payload_json`; `sync_status`, `synced_at`, `sync_error` (v4) |

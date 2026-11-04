@@ -109,4 +109,11 @@ export const MIGRATIONS: string[] = [
   `
   alter table event_log add column sync_error text;
   `,
+
+  // v5 — SPEC-009: índices para las consultas del panel (ventana de tiempo, sesión y join de líneas).
+  `
+  create index idx_sales_created_at on sales(created_at);
+  create index idx_sales_session on sales(session_id);
+  create index idx_sale_items_sale on sale_items(sale_id);
+  `,
 ];
