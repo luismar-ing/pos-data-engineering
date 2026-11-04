@@ -5,8 +5,9 @@
 | Arrendamiento de stock / préstamo | `lease`, `stock_lease`, ruta `/prestamos` | Cuota de inventario que el servidor congela y asigna a un dispositivo para vender sin red |
 | Cuota | `quota_total`, `quota_used` | Unidades arrendadas y unidades ya vendidas de un lease |
 | Stock central | `central_stock` | Inventario en el servidor no arrendado a ningún dispositivo |
-| Promedio móvil | `rollingAverage` | Unidades vendidas por minuto en una ventana reciente (`SESSION_MINUTES`) |
-| Margen de lease | `LEASE_MARGIN` | Factor de seguridad sobre la demanda estimada (hoy 1.2) |
+| Tasa de consumo | `calculateLeaseQty` (`leaseService`) | Unidades por minuto que vendió un dispositivo de un producto, según los préstamos que cerró en la ventana reciente (`LEASE_PARAMS.windowMinutes`) |
+| Cerrar préstamo | `close`, estado `closing` | Informar lo vendido y devolver el resto al stock central; en `closing` el préstamo ya no vende |
+| Margen de lease | `LEASE_PARAMS.margin` | Factor de seguridad sobre la demanda estimada (hoy 1.2) |
 | Bitácora | `event_log` | Registro append-only de eventos de venta pendientes de sincronizar |
 | Evento | `event`, `event_id` (UUID) | Hecho inmutable (p. ej. venta) generado en el dispositivo |
 | Sincronización por lotes | `sync`, Batch ETL | Envío de eventos pendientes al servidor al recuperar red |

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { leaseSync } from '../../leases/data/leaseSync';
 import { openSession } from '../data/sessionRepository';
 
 /** Pide el nombre del vendedor y abre la sesión. Funciona sin red (SPEC-003 RF-8). */
@@ -13,6 +14,7 @@ export function OpenSessionForm() {
     setBusy(true);
     try {
       setCurrentSession(await openSession(sellerName));
+      void leaseSync(); // SPEC-005 RF-9
     } catch (error) {
       Alert.alert('No se pudo abrir la sesión', error instanceof Error ? error.message : String(error));
     } finally {

@@ -5,21 +5,27 @@ import { useSessionStore } from '../../../shared/store/sessionStore';
 import { formatCents } from '../../../shared/utils/money';
 import { syncCatalog } from '../data/catalogSync';
 import { getAllProducts, type Product } from '../data/productRepository';
+import { getAvailableQuota } from '../../leases/data/leaseRepository';
 
-/** Inventario: catálogo local, también sin red (SPEC-004 RF-2, RF-9). El stock por lease llega con SPEC-005. */
+/** Inventario: catálogo local, también sin red (SPEC-004 RF-2, RF-9), con lo disponible en préstamo (SPEC-005 RF-8). */
 export function InventoryScreen() {
   const syncedAt = useSessionStore((s) => s.catalogSyncedAt);
+  const leasesUpdatedAt = useSessionStore((s) => s.leasesUpdatedAt);
   const [products, setProducts] = useState<Product[]>([]);
+  const [available, setAvailable] = useState<Map<string, number>>(new Map());
   const [syncing, setSyncing] = useState(false);
 
   const reload = useCallback(() => {
-    getAllProducts()
-      .then(setProducts)
+    Promise.all([getAllProducts(), getAvailableQuota()])
+      .then(([rows, quota]) => {
+        setProducts(rows);
+        setAvailable(quota);
+      })
       .catch((error) => console.error('Error al leer el catálogo local', error));
   }, []);
 
   useFocusEffect(reload);
-  useEffect(reload, [syncedAt, reload]); // la descarga del arranque puede terminar con la pantalla abierta
+  useEffect(reload, [syncedAt, leasesUpdatedAt, reload]); // la descarga del arranque puede terminar con la pantalla abierta
 
   async function handleSync() {
     setSyncing(true);
@@ -50,6 +56,7 @@ export function InventoryScreen() {
               <Text style={styles.name}>{item.name}</Text>
               {item.category && <Text style={styles.category}>{item.category}</Text>}
             </View>
+            <Text style={styles.available}>{`Disponible ${available.get(item.id) ?? 0}`}</Text>
             <Text style={styles.price}>{formatCents(item.unit_price_cents)}</Text>
           </View>
         )}
@@ -68,5 +75,6 @@ const styles = StyleSheet.create({
   name: { fontSize: 16 },
   category: { color: '#666' },
   price: { fontSize: 16, fontVariant: ['tabular-nums'] },
+  available: { color: '#666', marginRight: 12, fontVariant: ['tabular-nums'] },
   empty: { padding: 24, textAlign: 'center', color: '#666' },
 });
