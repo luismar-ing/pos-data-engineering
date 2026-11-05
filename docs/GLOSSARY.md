@@ -14,6 +14,6 @@
 | Idempotente | `on conflict do nothing` | Reenviar un evento no lo duplica |
 | Burn Rate | `burnRate` (`features/analytics/domain/metrics.ts`) | Velocidad de venta local: unidades del teléfono en los últimos 10 min ÷ minutos desde la primera de ellas (entre 1 y 10) |
 | Runout Time | `buildRunout` (`metrics.ts`) | Tiempo estimado hasta agotar la cuota local: disponible ÷ Burn Rate |
-| Recibo QR | `receiptQr` | Recibo completo comprimido dentro de un código QR |
+| Recibo QR | `receiptQr` | Recibo completo en texto dentro de un código QR, legible con la cámara del cliente sin red (SPEC-010) |
 | Dispositivo | `device_id` | Identificador estable del teléfono/terminal POS |
 | Sesión | `session_id` | Periodo de trabajo de un vendedor en un dispositivo |

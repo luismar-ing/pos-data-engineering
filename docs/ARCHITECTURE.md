@@ -39,6 +39,7 @@ src/
     domain/*                        # reglas puras, testeables
     ui/*                            # pantallas y componentes
   features/analytics/               # panel Dashboard (SPEC-009): analyticsSql + metrics (puros), analyticsRepository, DashboardScreen
+  features/sales/                   # carrito y cobro (SPEC-007); recibo QR (SPEC-010): receipt + receiptSql (puros), receiptRepository, ReceiptQr
   shared/store/                     # stores Zustand
   shared/ui/OfflineBanner.tsx       # franja "Sin conexión" sobre cada pestaña
   shared/utils/money.ts             # formatCents, parseMoneyToCents, computeChangeCents
@@ -115,6 +116,12 @@ Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin re
 2. **Burn Rate:** unidades vendidas por **este teléfono** (de cualquier sesión) en los últimos 10 min ÷ minutos desde la primera de esas ventas, entre 1 y 10. Por producto y en total.
 3. **Runout Time:** disponible del préstamo activo ÷ Burn Rate. Lista: productos con ventas en la ventana y préstamos agotados; agotados primero, luego del que se acaba antes; < 5 min en ámbar. Préstamos con cuota sin ventas solo se cuentan.
 4. **Sesión:** la abierta o, si no hay, la última cerrada. Top 5 por unidades con ingreso; ventas, unidades, ingreso y ticket promedio (centavos enteros).
+
+### 3.6 Recibo QR (SPEC-010)
+1. En la confirmación del cobro, "Recibo QR" llama a `getReceiptText(saleId)`: solo lee SQLite (venta, líneas, nombre del producto, vendedor de la sesión) y el nombre del dispositivo. No escribe ni genera eventos.
+2. `buildReceiptText` arma texto plano UTF-8: "POS-DE · <dispositivo>", fecha local, id corto y completo, vendedor, una línea por producto (`cantidad x nombre subtotal`), total y método de pago. Montos de los centavos guardados.
+3. Máximo 1 000 bytes (`RECEIPT_MAX_BYTES`); nombres a 24 caracteres con "…". Si no caben las líneas, cierra con "… y N productos más" por la suma de las que faltan; el total es el de la venta.
+4. `react-native-qrcode-svg` (sobre `react-native-svg`) dibuja el código en el teléfono, corrección L, fondo blanco y margen. El cliente lo lee con la cámara, sin red. Sin contratos HTTP.
 
 ## 4. Modelo de datos
 

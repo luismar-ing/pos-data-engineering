@@ -19,7 +19,7 @@ Objetivo: vender sin red sin sobrevender.
 - SPEC-006 Monitor de conectividad y modo offline
 - SPEC-008 Bitácora + Batch Sync ETL idempotente
 
-## Fase 3 — Valor agregado  ⏳ en curso (SPEC-009 hecha)
+## Fase 3 — Valor agregado  ✅ cerrada
 - SPEC-009 Edge Analytics (Burn Rate, Runout Time, top productos)
 - SPEC-010 Recibos QR offline
 

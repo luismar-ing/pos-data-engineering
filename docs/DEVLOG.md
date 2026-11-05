@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-05 — SPEC-010: Recibos QR offline
+**Spec:** SPEC-010
+**Hecho:** Spec, plan y tareas aprobados (P1–P6 según propuesta). App: `receipt.ts` puro (`buildReceiptText`, `truncateName`, `formatReceiptDate`, `utf8Bytes`; máximo 1 000 bytes, nombres a 24 caracteres, corte "… y N productos más" en una pasada); `receiptSql` (venta + vendedor, líneas en orden del carrito) y `receiptRepository.getReceiptText`, solo lectura; `ReceiptQr` con `react-native-qrcode-svg` 6.3.54 sobre `react-native-svg` 15.16.0 (ECC L, fondo blanco, margen); botones "Recibo QR" y "Volver" en la confirmación del cobro. Cierra R-03.
+**Verificación:** app `npm test` 55/55; `tsc` ok; `expo export` Android ok; `expo-doctor` solo con TD-024. T5 en teléfono: CA-1..CA-7 ok según el usuario, con el máximo de 1 000 bytes.
+**Decisiones:** texto plano en vez de comprimido (la cámara del cliente no descomprime; `GLOSSARY.md` corregido); un solo QR con corte de líneas en vez de varios; encabezado con el nombre del dispositivo hasta que exista un nombre de tienda; `allowImportingTsExtensions` en `tsconfig` para que un archivo puro importe otro con `.ts` y siga probándose con node.
+**Bloqueos / pendientes:** ninguno nuevo. Fase 3 cerrada; sigue la fase 4 (pruebas con ≥ 2 dispositivos, TD-027).
+
 ## 2026-11-04 — SPEC-009: Edge Analytics
 **Spec:** SPEC-009
 **Hecho:** Spec, plan y tareas aprobados (P1–P7 según propuesta). App: migración v5 (índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)`); `analyticsSql` (sesión objetivo, ventas de la ventana, cuota disponible, totales, top) y `metrics` (`windowMinutes`, `burnRate`, `buildRunout`, `averageTicketCents`) puros; `getDashboard` solo lee SQLite; pestaña Dashboard con ritmo, "Se agota" (agotados primero, ámbar < 5 min, contador de préstamos sin ventas), totales y top 5 de la sesión (o de la última cerrada); refresco al enfocar, cada 15 s y con `leasesUpdatedAt`.
