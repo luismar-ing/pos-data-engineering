@@ -4,8 +4,10 @@ import { useSessionStore } from '../../../shared/store/sessionStore';
 import { computeChangeCents, formatCents, parseMoneyToCents } from '../../../shared/utils/money';
 import { syncEvents } from '../../../core/sync/syncWorker';
 import { leaseSync } from '../../leases/data/leaseSync';
+import { getReceiptText } from '../data/receiptRepository';
 import { createSale, type Sale } from '../data/saleRepository';
 import { PAYMENT_METHODS, type PaymentMethod } from '../domain/cart';
+import { ReceiptQr } from './ReceiptQr';
 
 interface Props {
   visible: boolean;
@@ -13,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** Cobro: método de pago, cambio en efectivo y confirmación (SPEC-007 RF-6..RF-10). */
+/** Cobro: método de pago, cambio en efectivo y confirmación (SPEC-007 RF-6..RF-10), con recibo QR (SPEC-010). */
 export function CheckoutModal({ visible, totalCents, onClose }: Props) {
   const clearCart = useSessionStore((s) => s.clearCart);
   const [method, setMethod] = useState<PaymentMethod | null>(null);
@@ -23,6 +25,9 @@ export function CheckoutModal({ visible, totalCents, onClose }: Props) {
   const [done, setDone] = useState<{ sale: Sale; changeCents: number | null } | null>(null);
   // El estado de React no frena dos toques en el mismo frame; la ref sí (RF-8).
   const charging = useRef(false);
+  // Texto del recibo QR de `done`; nulo = se ve la confirmación (SPEC-010 RF-10).
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const [buildingReceipt, setBuildingReceipt] = useState(false);
 
   const receivedCents = method === 'cash' && received.trim() ? parseMoneyToCents(received) : null;
   const changeCents = receivedCents === null ? null : computeChangeCents(totalCents, receivedCents);
@@ -34,7 +39,21 @@ export function CheckoutModal({ visible, totalCents, onClose }: Props) {
     setMethod(null);
     setReceived('');
     setDone(null);
+    setReceipt(null);
     onClose();
+  }
+
+  async function showReceipt() {
+    if (!done || buildingReceipt) return;
+    setBuildingReceipt(true);
+    try {
+      setReceipt(await getReceiptText(done.sale.id));
+    } catch (error) {
+      // Solo lectura: la venta ya está guardada y no cambia (RF-11).
+      Alert.alert('No se pudo generar el recibo', error instanceof Error ? error.message : String(error));
+    } finally {
+      setBuildingReceipt(false);
+    }
   }
 
   async function confirm() {
@@ -68,7 +87,12 @@ export function CheckoutModal({ visible, totalCents, onClose }: Props) {
       {/* Tocar fuera del campo cierra el teclado: el teclado numérico de iOS no trae botón para cerrarlo. */}
       <Pressable style={styles.backdrop} onPress={Keyboard.dismiss} accessible={false}>
         <Pressable style={styles.sheet} onPress={Keyboard.dismiss} accessible={false}>
-          {done ? (
+          {done && receipt ? (
+            <>
+              <ReceiptQr text={receipt} saleId={done.sale.id} totalCents={done.sale.total_cents} />
+              <Button label="Volver" onPress={() => setReceipt(null)} />
+            </>
+          ) : done ? (
             <>
               <Text style={styles.title}>Venta registrada</Text>
               <Text style={styles.big}>{formatCents(done.sale.total_cents)}</Text>
@@ -77,7 +101,15 @@ export function CheckoutModal({ visible, totalCents, onClose }: Props) {
                 {done.changeCents !== null && done.changeCents > 0 ? ` · cambio ${formatCents(done.changeCents)}` : ''}
               </Text>
               <Text style={styles.muted} selectable>Venta {done.sale.id.slice(0, 8)}</Text>
-              <Button label="Nueva venta" onPress={close} primary />
+              <View style={styles.actions}>
+                <Button
+                  label={buildingReceipt ? 'Generando…' : 'Recibo QR'}
+                  onPress={showReceipt}
+                  disabled={buildingReceipt}
+                  accessibilityLabel="Mostrar recibo QR al cliente"
+                />
+                <Button label="Nueva venta" onPress={close} primary />
+              </View>
             </>
           ) : (
             <>
@@ -126,13 +158,26 @@ export function CheckoutModal({ visible, totalCents, onClose }: Props) {
   );
 }
 
-function Button({ label, onPress, disabled, primary }: { label: string; onPress: () => void; disabled?: boolean; primary?: boolean }) {
+function Button({
+  label,
+  onPress,
+  disabled,
+  primary,
+  accessibilityLabel,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  accessibilityLabel?: string;
+}) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={[styles.button, primary && styles.primary, disabled && styles.dimmed]}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled }}
     >
       <Text style={primary ? styles.primaryText : undefined}>{label}</Text>

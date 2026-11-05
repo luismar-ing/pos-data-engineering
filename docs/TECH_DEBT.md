@@ -18,7 +18,6 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Riesgo | Mitigación propuesta |
 |---|---|---|
-| R-03 | Payload de recibo QR excede la capacidad del código | Definir formato compacto y límite de líneas en SPEC-010 |
 
 ## Resueltos
 
@@ -50,3 +49,4 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | R-01 | Lease que expira con el dispositivo sin red vendiendo | SPEC-005 (el servidor nunca devuelve stock sin `close`) | 2026-11-03 |
 | R-02 | Reloj del dispositivo desfasado en el promedio móvil | SPEC-005 (tasa con hora del servidor; renovación con duración relativa) | 2026-11-03 |
 | TD-009 | `/sync/events`: lotes, validación completa, resultado por evento; no descontar stock al recibir ventas | SPEC-008 (`syncService`, `sync_events`) | 2026-11-03 |
+| R-03 | Payload de recibo QR excede la capacidad del código | SPEC-010 (texto plano de máximo 1 000 bytes, nombres a 24 caracteres, corte con "… y N productos más") | 2026-11-05 |
