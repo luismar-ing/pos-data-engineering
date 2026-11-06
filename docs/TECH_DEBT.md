@@ -10,7 +10,6 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | TD-029 | ⚪ | app | `core/sync/syncBatch.ts` | Un evento de más de 80 kB (venta con cientos de líneas) va solo en su lote y podría pasar del límite de 100 kB del servidor (413): frenaría la cola en ese evento | Si aparecen ventas tan grandes |
 | TD-025 | 🟡 | backend | `services/leaseService.ts` | La cuota de un teléfono perdido o desinstalado queda congelada para siempre: el servidor solo devuelve stock con `close` (SPEC-005 RF-15). Falta una forma de liberarla a mano | Spec de administración (por definir) |
 | TD-026 | ⚪ | app | `features/leases/data/leaseSync.ts` | Cada ciclo (30 s) vuelve a pedir préstamo de todos los productos sin stock; con catálogos grandes son varias peticiones inútiles | Cuando el catálogo crezca |
-| TD-027 | 🟡 | app, backend | — | CA-9 de SPEC-005 (dos dispositivos sin red no superan el stock) no se probó con dos dispositivos reales; está cubierto por partes: pedidos simultáneos en `lease.test.ts` y descuento local en `leases.test.mjs` | Fase 4 (pruebas con ≥ 2 dispositivos) |
 | TD-013 | 🟡 | app | — | La app solo prueba migraciones (`npm test`, `node:sqlite`); faltan pruebas de repositorios y UI | cada spec de app |
 | TD-024 | ⚪ | app | `package.json` | `expo-doctor` 19/20: salieron `expo` 58.0.23, `expo-sqlite` 58.0.15 y `react-native-safe-area-context` 5.11.1 (instalados 58.0.21 / 58.0.14 / 5.10.1) | `npx expo install --check` cuando se decida |
 
@@ -49,4 +48,5 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 | R-01 | Lease que expira con el dispositivo sin red vendiendo | SPEC-005 (el servidor nunca devuelve stock sin `close`) | 2026-11-03 |
 | R-02 | Reloj del dispositivo desfasado en el promedio móvil | SPEC-005 (tasa con hora del servidor; renovación con duración relativa) | 2026-11-03 |
 | TD-009 | `/sync/events`: lotes, validación completa, resultado por evento; no descontar stock al recibir ventas | SPEC-008 (`syncService`, `sync_events`) | 2026-11-03 |
+| TD-027 | CA-9 de SPEC-005 sin prueba con dos dispositivos reales | SPEC-011 (emulador + iPhone sin red: 10 vendidos de 10, sin duplicados, `report:stock` en `ok`) | 2026-11-06 |
 | R-03 | Payload de recibo QR excede la capacidad del código | SPEC-010 (texto plano de máximo 1 000 bytes, nombres a 24 caracteres, corte con "… y N productos más") | 2026-11-05 |

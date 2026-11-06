@@ -23,7 +23,8 @@ Objetivo: vender sin red sin sobrevender.
 - SPEC-009 Edge Analytics (Burn Rate, Runout Time, top productos)
 - SPEC-010 Recibos QR offline
 
-## Fase 4 — Endurecimiento y demo
+## Fase 4 — Endurecimiento y demo  ⏳ en curso
+- SPEC-011 Corte de red con dos dispositivos y reintentos de sync ✅
 - Pruebas de corte de red con ≥ 2 dispositivos concurrentes.
 - Pruebas de reintento de sync (duplicados, lotes parciales).
 - Datos semilla y guion de demo.

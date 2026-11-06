@@ -14,6 +14,7 @@ Guía: [SPEC_GUIDE.md](SPEC_GUIDE.md) · Plantillas: [_template/](_template/)
 | [SPEC-008](008-sync-etl/spec.md) | Bitácora + Batch Sync ETL idempotente | 2 | app, backend | 001, 003, 005, 006, 007 | 🏁 Done |
 | [SPEC-009](009-edge-analytics/spec.md) | Edge Analytics (Burn Rate, Runout Time, top productos) | 3 | app | 005, 007 | 🏁 Done |
 | [SPEC-010](010-recibo-qr/spec.md) | Recibos QR offline | 3 | app | 007 | 🏁 Done |
+| [SPEC-011](011-prueba-dos-dispositivos/spec.md) | Corte de red con dos dispositivos y reintentos de sync | 4 | backend, app, docs | 005, 006, 008 | 🏁 Done |
 
 Estados: 📝 Draft · ✅ Approved · 🚧 In Progress · ⛔ Blocked · 🏁 Done · ❌ Rejected · ⬜ Por redactar
 

@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { MIGRATIONS } from '../src/core/db/migrations.ts';
 import { fitBatch, toWireEvent } from '../src/core/sync/syncBatch.ts';
-import { MARK_FAILED_SQL, MARK_SYNCED_SQL, PENDING_BATCH_SQL, SYNC_COUNTS_SQL } from '../src/core/sync/syncSql.ts';
+import { MARK_FAILED_SQL, MARK_SYNCED_SQL, PENDING_BATCH_SQL, SYNC_COUNTS_SQL, markStatement } from '../src/core/sync/syncSql.ts';
 
 function open() {
   const db = new DatabaseSync(':memory:');
@@ -64,4 +64,36 @@ test('fitBatch respeta el peso máximo y deja al menos uno (RNF-4)', () => {
   assert.equal(fitBatch(events, 10_000).length, 3);
   assert.equal(fitBatch([event(1, 5000)], 100).length, 1); // uno solo, aunque pese más
   assert.deepEqual(fitBatch([]), []);
+});
+
+test('respuesta perdida: el evento sigue pending y el reenvío con duplicate lo marca synced (SPEC-011 CA-7, RF-9)', () => {
+  const db = open();
+  const apply = (results, now) => {
+    for (const result of results) {
+      const [sql, params] = markStatement(result, now);
+      db.prepare(sql).run(...params);
+    }
+  };
+  const before = db.prepare('select payload_json from event_log where id = ?').get('e1').payload_json;
+
+  // 1.er envío: el servidor guardó e1 y e2, pero la respuesta no llegó (error de red): no se aplica nada.
+  assert.deepEqual(pending(db), ['e1', 'e2', 'e3']);
+
+  // Reenvío del mismo lote: lo ya guardado vuelve como duplicate, lo nuevo como inserted.
+  apply(
+    [
+      { event_id: 'e1', status: 'duplicate' },
+      { event_id: 'e2', status: 'duplicate' },
+      { event_id: 'e3', status: 'inserted' },
+    ],
+    '2026-11-05T12:00:00Z'
+  );
+  assert.deepEqual(pending(db), []);
+  const row = db.prepare('select sync_status, synced_at, payload_json from event_log where id = ?').get('e1');
+  assert.deepEqual({ ...row }, { sync_status: 'synced', synced_at: '2026-11-05T12:00:00Z', payload_json: before });
+});
+
+test('markStatement: rejected va a failed con su motivo', () => {
+  assert.deepEqual(markStatement({ event_id: 'x', status: 'rejected', reason: 'r' }, 'now'), [MARK_FAILED_SQL, ['r', 'x']]);
+  assert.deepEqual(markStatement({ event_id: 'x', status: 'rejected' }, 'now')[1], ['Rechazado por el servidor', 'x']);
 });

@@ -10,7 +10,9 @@
     "typecheck": "tsc",
     "test": "tsx --test --test-concurrency=1 --import ./test/env.ts \"test/**/*.test.ts\"",
     "db:migrate": "tsx src/db/cli.ts migrate",
-    "db:seed": "tsx src/db/cli.ts seed"
+    "db:seed": "tsx src/db/cli.ts seed",
+    "scenario:reset": "tsx src/db/cli.ts reset-scenario",
+    "report:stock": "tsx src/db/cli.ts report"
   },
   "keywords": [],
   "author": "",

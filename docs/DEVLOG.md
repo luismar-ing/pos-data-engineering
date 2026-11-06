@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-06 — SPEC-011: Corte de red con dos dispositivos y reintentos de sync
+**Spec:** SPEC-011
+**Hecho:** Spec, plan y tareas aprobados (P1–P5 según propuesta). Backend: `src/dev/scenario.ts` (`SCENARIO_STOCK`, `assertDevDatabase`, `resetScenario`, `STOCK_REPORT_SQL`, `checkStock`) y comandos `npm run scenario:reset` / `report:stock`; pruebas de reporte, lote cortado y envíos simultáneos. App: `markStatement` sale de `applyResults` a `syncSql.ts` para probar la respuesta perdida. Procedimiento en `docs/testing/dos-dispositivos.md`. Cierra TD-027.
+**Verificación:** backend `npm test` 50/50, app 57/57, `tsc` ok en los dos. Primera corrida con el emulador `pos_pixel` y un iPhone 14 Pro: 8/8 pasos; cada uno se bloqueó en su cuota sin red, 10 vendidos de 10 en 6 ventas sin duplicados, el teléfono no pudo tomar la cuota congelada del emulador (CA-3) y `report:stock` en `ok` tras cada paso. Reporte en 42–68 ms.
+**Decisiones:** sin cambios en `syncService`: lote cortado y envíos simultáneos ya eran idempotentes (`on conflict do nothing` en la transacción de cada evento). El stock inicial es una constante en código en vez de una tabla. **P1 cambió:** dos emuladores a la vez dejaban la PC sin RAM ("System UI isn't responding"); se usa un emulador aligerado (720×1600, 2 núcleos, 1.5 GB) y el teléfono. `.env.local` con la IP de la red para que los dos usen el mismo backend.
+**Bloqueos / pendientes:** queda el último tema de la fase 4: datos semilla y guion de demo. TD-025 y TD-028 siguen para la spec de administración.
+
 ## 2026-11-05 — SPEC-010: Recibos QR offline
 **Spec:** SPEC-010
 **Hecho:** Spec, plan y tareas aprobados (P1–P6 según propuesta). App: `receipt.ts` puro (`buildReceiptText`, `truncateName`, `formatReceiptDate`, `utf8Bytes`; máximo 1 000 bytes, nombres a 24 caracteres, corte "… y N productos más" en una pasada); `receiptSql` (venta + vendedor, líneas en orden del carrito) y `receiptRepository.getReceiptText`, solo lectura; `ReceiptQr` con `react-native-qrcode-svg` 6.3.54 sobre `react-native-svg` 15.16.0 (ECC L, fondo blanco, margen); botones "Recibo QR" y "Volver" en la confirmación del cobro. Cierra R-03.
