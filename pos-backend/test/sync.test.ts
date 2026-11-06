@@ -136,3 +136,30 @@ test('la venta guarda su session_id', async () => {
     const { rows } = await pool.query('select session_id from sales where id = $1', [sale.event_id]);
     assert.equal(rows[0].session_id, sale.payload.sale.session_id);
 });
+
+// SPEC-011: reintentos de sync.
+test('lote cortado: lo ya guardado responde duplicate y lo demás inserted, sin repetir ventas (SPEC-011 CA-5, RF-7)', async () => {
+    const events = [saleEvent(), saleEvent(), saleEvent(), saleEvent()];
+    const first = await send(events.slice(0, 2)); // el servidor guardó dos y la respuesta no llegó al teléfono
+    assert.deepEqual(statuses(first.body), ['inserted', 'inserted']);
+
+    const retry = await send(events);
+    assert.equal(retry.status, 200);
+    assert.deepEqual(statuses(retry.body), ['duplicate', 'duplicate', 'inserted', 'inserted']);
+    assert.equal(await count('sales'), 4);
+    assert.equal(await count('sale_items'), 4);
+    assert.equal(await count('sync_events'), 4);
+});
+
+test('el mismo lote dos veces a la vez: cada evento una sola vez y sin errores (SPEC-011 CA-6, RF-8)', async () => {
+    const events = Array.from({ length: 5 }, () => saleEvent());
+    const [a, b] = await Promise.all([send(events), send(events)]);
+    assert.equal(a.status, 200);
+    assert.equal(b.status, 200);
+    events.forEach((_, i) => {
+        assert.deepEqual([a.body.results[i].status, b.body.results[i].status].sort(), ['duplicate', 'inserted']);
+    });
+    assert.equal(await count('sales'), 5);
+    assert.equal(await count('sale_items'), 5);
+    assert.equal(await count('sync_events'), 5);
+});

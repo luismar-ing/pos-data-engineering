@@ -1,16 +1,16 @@
 # Progreso
 
-> Última revisión: **2026-11-05** · Fase actual: **4 — Endurecimiento y demo** (fase 3 cerrada) · Próximo paso: redactar la spec de la fase 4.
+> Última revisión: **2026-11-06** · Fase actual: **4 — Endurecimiento y demo** (fase 3 cerrada) · Próximo paso: redactar la spec de datos semilla y guion de demo (último tema de la fase 4).
 
 Leyenda: ✅ hecho · 🟡 parcial / con problemas · 🔴 roto · ⬜ no iniciado
 
 ## Resumen
 
-SPEC-001 está terminada y verificada, también en teléfono: app y backend comparten el modelo de venta (cabecera + líneas, montos en centavos), el esquema local tiene migraciones versionadas y el backend recibe ventas sin duplicarlas. Postgres corre en un contenedor propio del proyecto. SPEC-002 deja el backend con comandos estándar, migraciones automáticas, errores con forma única, `/health` y pruebas automatizadas. SPEC-003 da a cada teléfono una identidad registrada en el servidor (secreto en almacén seguro, solo el hash en Postgres), protege `/prestamos` y `/sync`, y exige una sesión de vendedor abierta para cobrar; probado en teléfono, también sin red. SPEC-004 descarga el catálogo al abrir la app o a mano, lo guarda de forma atómica y lo muestra en Inventario sin red; las bajas quedan inactivas y las ventas conservan su precio. SPEC-007 cierra la fase 1: carrito con buscador, cobro con método de pago y cambio, una venta por cobro y precio vigente al cobrar; 34 ms por cobro sin red en teléfono. SPEC-006 abre la fase 2: la app sabe si el servidor responde (`GET /health`), muestra "Sin conexión" en todas las pestañas y, al volver la red, reintenta el registro y el catálogo. SPEC-005 resuelve el núcleo: cada teléfono vende solo lo que el servidor le prestó y congeló, con una cuota según su propio ritmo de venta; lo no vendido vuelve al stock central solo cuando el teléfono lo informa. Probado en teléfono; la prueba con dos dispositivos queda para la fase 4 (TD-027). SPEC-008 cierra la fase 2: la bitácora viaja sola al servidor en lotes de hasta 50, con un resultado por evento y sin duplicados; las sesiones de vendedor también llegan; 500 eventos en 4 s. SPEC-009 abre la fase 3: la pestaña Dashboard muestra, sin red, el ritmo de venta del teléfono, qué se agota primero y los totales y más vendidos de la sesión. SPEC-010 cierra la fase 3: tras cobrar, la app muestra un QR con el recibo en texto que el cliente lee con la cámara de su teléfono, sin red; máximo 1 000 bytes, con "… y N productos más" si el carrito no cabe.
+SPEC-001 está terminada y verificada, también en teléfono: app y backend comparten el modelo de venta (cabecera + líneas, montos en centavos), el esquema local tiene migraciones versionadas y el backend recibe ventas sin duplicarlas. Postgres corre en un contenedor propio del proyecto. SPEC-002 deja el backend con comandos estándar, migraciones automáticas, errores con forma única, `/health` y pruebas automatizadas. SPEC-003 da a cada teléfono una identidad registrada en el servidor (secreto en almacén seguro, solo el hash en Postgres), protege `/prestamos` y `/sync`, y exige una sesión de vendedor abierta para cobrar; probado en teléfono, también sin red. SPEC-004 descarga el catálogo al abrir la app o a mano, lo guarda de forma atómica y lo muestra en Inventario sin red; las bajas quedan inactivas y las ventas conservan su precio. SPEC-007 cierra la fase 1: carrito con buscador, cobro con método de pago y cambio, una venta por cobro y precio vigente al cobrar; 34 ms por cobro sin red en teléfono. SPEC-006 abre la fase 2: la app sabe si el servidor responde (`GET /health`), muestra "Sin conexión" en todas las pestañas y, al volver la red, reintenta el registro y el catálogo. SPEC-005 resuelve el núcleo: cada teléfono vende solo lo que el servidor le prestó y congeló, con una cuota según su propio ritmo de venta; lo no vendido vuelve al stock central solo cuando el teléfono lo informa. Probado en teléfono; la prueba con dos dispositivos queda para la fase 4 (TD-027). SPEC-008 cierra la fase 2: la bitácora viaja sola al servidor en lotes de hasta 50, con un resultado por evento y sin duplicados; las sesiones de vendedor también llegan; 500 eventos en 4 s. SPEC-009 abre la fase 3: la pestaña Dashboard muestra, sin red, el ritmo de venta del teléfono, qué se agota primero y los totales y más vendidos de la sesión. SPEC-010 cierra la fase 3: tras cobrar, la app muestra un QR con el recibo en texto que el cliente lee con la cámara de su teléfono, sin red; máximo 1 000 bytes, con "… y N productos más" si el carrito no cabe. SPEC-011 abre la fase 4: un emulador y un iPhone sin red vendieron 10 de 10 hot dogs sin sobreventa ni duplicados, con un reporte de consistencia del stock en el servidor y pruebas de reintentos de sync (TD-027 resuelto).
 
 ## Repositorio
 
-Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/010-recibo-qr`.
+Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/011-prueba-dos-dispositivos`.
 
 ## pos-app
 
@@ -33,7 +33,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | Dashboard (`features/analytics`) | ✅ | Migración v5 (índices); Burn Rate desde la primera venta del teléfono en 10 min, Runout Time (ámbar < 5 min), top 5 y totales de la sesión; refresco al enfocar, cada 15 s y tras cobrar; < 200 ms con 2 000 productos y 10 000 ventas (PC) (SPEC-009) |
 | Sync worker (`core/sync`) | ✅ | Migración v4 (`sync_error`); `syncEvents` en lotes de 50 y < 80 kB hasta vaciar la cola; tras cobrar, al abrir/cerrar sesión, al reconectar, cada 30 s y desde Ajustes (resumen y "Sincronizar ahora") (SPEC-008) |
 | Recibo QR (`features/sales`) | ✅ | Texto plano UTF-8 ≤ 1 000 bytes, nombres a 24 caracteres, corte "… y N productos más"; `react-native-qrcode-svg` (ECC L) en la confirmación del cobro; solo lectura, sin red (SPEC-010) |
-| Tests automatizados | 🟡 | `npm test` (55): migraciones, catálogo, carrito, dinero, conectividad, préstamos, sync, analítica y recibo QR (TD-013) |
+| Tests automatizados | 🟡 | `npm test` (57): migraciones, catálogo, carrito, dinero, conectividad, préstamos, sync (incluida respuesta perdida), analítica y recibo QR (TD-013) |
 
 ## pos-backend
 
@@ -48,7 +48,8 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | `POST /prestamos/request` y `/close` | ✅ | Exigen dispositivo registrado. Pedir congela la cuota con la fila del producto bloqueada; cerrar devuelve lo no vendido; ambos idempotentes (SPEC-005) |
 | `POST /sync/events` | ✅ | Exige dispositivo registrado. Lotes de 1–50 con `batch_id`; ventas y sesiones; un resultado por evento (`inserted`/`duplicate`/`rejected`); idempotente por `sync_events`; validación completa; no toca stock (SPEC-008) |
 | `leaseService` | ✅ | Tasa por dispositivo desde sus préstamos cerrados (hora del servidor); ventana 5 min, préstamo 3 min, margen 1.2, mínimo 5; con pruebas |
-| Tests automatizados | ✅ | `npm test` (node:test), 43 pruebas contra `posde_test`, incluida la de pedidos simultáneos |
+| Escenario y reporte de stock (`src/dev/scenario.ts`) | ✅ | `npm run scenario:reset` (solo `posde`/`posde_test`) y `npm run report:stock` (central + prestado + informado = inicial; sync ≤ inicial) (SPEC-011) |
+| Tests automatizados | ✅ | `npm test` (node:test), 50 pruebas contra `posde_test`: pedidos simultáneos, lote cortado, envíos simultáneos del mismo lote y reporte de stock |
 
 ## Specs
 
@@ -64,6 +65,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | SPEC-008 Bitácora + Batch Sync ETL | 🏁 Done (2026-11-03) |
 | SPEC-009 Edge Analytics | 🏁 Done (2026-11-04) |
 | SPEC-010 Recibos QR offline | 🏁 Done (2026-11-05) |
+| SPEC-011 Corte de red con dos dispositivos | 🏁 Done (2026-11-06) |
 
 ## Decisiones pendientes del usuario
 

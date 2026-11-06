@@ -12,6 +12,20 @@ export const MARK_SYNCED_SQL = `update event_log set sync_status = 'synced', syn
 
 export const MARK_FAILED_SQL = `update event_log set sync_status = 'failed', sync_error = ? where id = ? and sync_status = 'pending'`;
 
+/** Resultado por evento de `POST /sync/events`. */
+export interface EventResult {
+  event_id: string;
+  status: 'inserted' | 'duplicate' | 'rejected';
+  reason?: string;
+}
+
+/** Load: `inserted` y `duplicate` pasan a synced; `rejected` a failed con el motivo (SPEC-008 RF-12, RF-13). */
+export function markStatement(result: EventResult, nowIso: string): [sql: string, params: string[]] {
+  return result.status === 'rejected'
+    ? [MARK_FAILED_SQL, [result.reason ?? 'Rechazado por el servidor', result.event_id]]
+    : [MARK_SYNCED_SQL, [nowIso, result.event_id]];
+}
+
 export const SYNC_COUNTS_SQL = `select sync_status, count(*) as n from event_log group by sync_status`;
 
 export const SET_EVENTS_SYNCED_AT_SQL = `insert or replace into settings (key, value) values ('events_synced_at', ?)`;

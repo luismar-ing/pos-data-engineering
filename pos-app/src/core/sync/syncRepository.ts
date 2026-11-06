@@ -2,19 +2,14 @@ import { getDatabase } from '../db/database';
 import { BATCH_SIZE, type EventRow } from './syncBatch';
 import {
   GET_EVENTS_SYNCED_AT_SQL,
-  MARK_FAILED_SQL,
-  MARK_SYNCED_SQL,
+  markStatement,
   PENDING_BATCH_SQL,
   SET_EVENTS_SYNCED_AT_SQL,
   SYNC_COUNTS_SQL,
+  type EventResult,
 } from './syncSql';
 
-/** Resultado por evento de `POST /sync/events`. */
-export interface EventResult {
-  event_id: string;
-  status: 'inserted' | 'duplicate' | 'rejected';
-  reason?: string;
-}
+export type { EventResult };
 
 export async function getPendingBatch(limit = BATCH_SIZE): Promise<EventRow[]> {
   const db = await getDatabase();
@@ -27,11 +22,8 @@ export async function applyResults(results: EventResult[], nowIso: string): Prom
   let changed = 0;
   await db.withExclusiveTransactionAsync(async (txn) => {
     for (const result of results) {
-      const { changes } =
-        result.status === 'rejected'
-          ? await txn.runAsync(MARK_FAILED_SQL, [result.reason ?? 'Rechazado por el servidor', result.event_id])
-          : await txn.runAsync(MARK_SYNCED_SQL, [nowIso, result.event_id]);
-      changed += changes;
+      const [sql, params] = markStatement(result, nowIso);
+      changed += (await txn.runAsync(sql, params)).changes;
     }
     await txn.runAsync(SET_EVENTS_SYNCED_AT_SQL, [nowIso]);
   });

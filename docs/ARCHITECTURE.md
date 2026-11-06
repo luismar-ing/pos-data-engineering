@@ -63,7 +63,7 @@ db/seed/            # datos de desarrollo repetibles, npm run db:seed
 db/docker-init/     # solo crea posde_test al crear el volumen (compose.yaml, puerto 5434)
 ```
 
-Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck` · `test` · `db:migrate` · `db:seed`.
+Comandos (en `pos-backend/`): `npm run dev` · `build` · `start` · `typecheck` · `test` · `db:migrate` · `db:seed` · `scenario:reset` · `report:stock` (los dos últimos solo en desarrollo, SPEC-011).
 
 ## 3. Flujos principales
 
@@ -122,6 +122,12 @@ Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin re
 2. `buildReceiptText` arma texto plano UTF-8: "POS-DE · <dispositivo>", fecha local, id corto y completo, vendedor, una línea por producto (`cantidad x nombre subtotal`), total y método de pago. Montos de los centavos guardados.
 3. Máximo 1 000 bytes (`RECEIPT_MAX_BYTES`); nombres a 24 caracteres con "…". Si no caben las líneas, cierra con "… y N productos más" por la suma de las que faltan; el total es el de la venta.
 4. `react-native-qrcode-svg` (sobre `react-native-svg`) dibuja el código en el teléfono, corrección L, fondo blanco y margen. El cliente lo lee con la cámara, sin red. Sin contratos HTTP.
+
+### 3.7 Consistencia del stock y prueba con dos dispositivos (SPEC-011)
+1. El stock central solo cambia por los préstamos: pedir resta `quota_total`, cerrar devuelve `quota_total − quota_used`; el sync de ventas no lo toca. Por producto: **stock central + Σ `quota_total` (active) + Σ `quota_used` (released) = stock inicial**.
+2. `npm run report:stock` (`src/dev/scenario.ts` → `STOCK_REPORT_SQL`, `checkStock`) imprime por producto central, prestado, informado, vendido por sync y el total; marca inconsistente si el total no da el stock inicial o si lo vendido por sync lo supera. Solo lee; termina con código 1 si algo no cuadra.
+3. `npm run scenario:reset` borra préstamos, ventas, eventos y sesiones y fija `SCENARIO_STOCK` ("Hot dog" en 10). Solo corre si la base es `posde` o `posde_test` (`assertDevDatabase`). No borra `devices`.
+4. Procedimiento con un emulador y un teléfono: `docs/testing/dos-dispositivos.md`. Idempotencia de reintentos probada en `sync.test.ts` (lote cortado, envíos simultáneos) y `sync.test.mjs` (respuesta perdida, `markStatement`).
 
 ## 4. Modelo de datos
 
