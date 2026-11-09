@@ -69,3 +69,15 @@ const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 
 /** Búsqueda por nombre sin distinguir mayúsculas ni acentos (CA-3). Consulta vacía: todo coincide. */
 export const matchesSearch = (name: string, query: string) => fold(name).includes(fold(query.trim()));
+
+/** Categorías del catálogo, sin repetir y en orden alfabético; los productos sin categoría no aportan (SPEC-012 RF-7). */
+export function categoriesOf(products: Pick<Product, 'category'>[]): string[] {
+  const names = new Set<string>();
+  for (const p of products) if (p.category) names.add(p.category);
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+/** Filtro de Venta: categoría (null = "Todo") combinada con la búsqueda por nombre (SPEC-012 RF-7, P4). */
+export function filterProducts<T extends Pick<Product, 'name' | 'category'>>(products: T[], query: string, category: string | null): T[] {
+  return products.filter((p) => (category === null || p.category === category) && matchesSearch(p.name, query));
+}

@@ -1,105 +1,128 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
-import { formatCents } from '../../../shared/utils/money';
+import { AppText } from '../../../shared/ui/AppText';
+import { Icon } from '../../../shared/ui/Icon';
+import { Pill } from '../../../shared/ui/Pill';
+import { ScreenHeader } from '../../../shared/ui/ScreenHeader';
+import { colors, fonts, radius, space } from '../../../shared/ui/theme';
+import { formatTime } from '../../../shared/utils/time';
+import { getLowStockIds } from '../../analytics/data/analyticsRepository';
 import { getAllProducts, type Product } from '../../inventory/data/productRepository';
 import { getAvailableQuota } from '../../leases/data/leaseRepository';
 import { OpenSessionForm } from '../../session/ui/OpenSessionForm';
-import { matchesSearch, priceCart } from '../domain/cart';
-import { CartPanel } from './CartPanel';
+import { categoriesOf, filterProducts, priceCart } from '../domain/cart';
+import { CartBar } from './CartBar';
+import { CategoryFilter } from './CategoryFilter';
 import { CheckoutModal } from './CheckoutModal';
+import { ProductTile } from './ProductTile';
 
-/** Venta: catálogo con buscador arriba, carrito abajo (SPEC-007 P5). Sin sesión no se cobra (SPEC-003 CA-6). */
+/** Venta: cabecera, buscador, filtros y cuadrícula de productos, con la barra de cobro abajo (SPEC-012 RF-5..RF-11). Sin sesión no se cobra (SPEC-003 CA-6). */
 export function SaleScreen() {
   const session = useSessionStore((s) => s.currentSession);
+  const isOnline = useSessionStore((s) => s.isOnline);
   const syncedAt = useSessionStore((s) => s.catalogSyncedAt);
   const leasesUpdatedAt = useSessionStore((s) => s.leasesUpdatedAt);
   const cart = useSessionStore((s) => s.cart);
   const addToCart = useSessionStore((s) => s.addToCart);
   const [products, setProducts] = useState<Product[]>([]);
   const [available, setAvailable] = useState<Map<string, number>>(new Map());
+  const [low, setLow] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  const tileWidth = (useWindowDimensions().width - space.xl * 2 - space.md) / 2;
 
   const reload = useCallback(() => {
-    Promise.all([getAllProducts(), getAvailableQuota()])
-      .then(([rows, quota]) => {
+    Promise.all([getAllProducts(), getAvailableQuota(), getLowStockIds(Date.now())])
+      .then(([rows, quota, lowIds]) => {
         setProducts(rows);
         setAvailable(quota);
+        setLow(lowIds);
       })
       .catch((error) => console.error('Error al leer el catálogo local', error));
   }, []);
+
   useFocusEffect(reload);
-  // Una actualización del catálogo cambia precios y bajas; un cambio de préstamos, lo disponible (SPEC-005 RF-8).
   useEffect(reload, [syncedAt, leasesUpdatedAt, reload]);
 
   const priced = useMemo(() => priceCart(cart, new Map(products.map((p) => [p.id, p]))), [cart, products]);
-  const visible = useMemo(() => products.filter((p) => matchesSearch(p.name, query)), [products, query]);
+  const categories = useMemo(() => categoriesOf(products), [products]);
+  const activeCategory = category !== null && categories.includes(category) ? category : null; // la categoría pudo salir del catálogo
+  const visible = useMemo(() => filterProducts(products, query, activeCategory), [products, query, activeCategory]);
+  const qtyById = useMemo(() => new Map(cart.map((line) => [line.productId, line.quantity])), [cart]);
 
   if (!session) return <OpenSessionForm />;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.session}>Sesión de {session.seller_name}</Text>
-      <TextInput
-        style={styles.search}
-        placeholder="Buscar producto"
-        value={query}
-        onChangeText={setQuery}
-        accessibilityLabel="Buscar producto por nombre"
-        clearButtonMode="while-editing"
+      <ScreenHeader
+        title="Venta"
+        subtitle={`${session.seller_name}, desde las ${formatTime(session.opened_at)}`}
+        right={<Pill label={isOnline ? 'En línea' : 'Sin conexión'} tone={isOnline ? 'action' : 'warning'} dot />}
       />
+      <View style={styles.search}>
+        <Icon name="buscar" size={22} color={colors.muted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar producto"
+          placeholderTextColor={colors.muted}
+          value={query}
+          onChangeText={setQuery}
+          accessibilityLabel="Buscar producto por nombre"
+          clearButtonMode="while-editing"
+        />
+      </View>
+      <CategoryFilter categories={categories} selected={activeCategory} onSelect={setCategory} />
       <FlatList
         style={styles.list}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.columns}
+        numColumns={2}
         data={visible}
         keyExtractor={(p) => p.id}
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => {
-          const left = available.get(item.id) ?? 0;
-          return (
-            <Pressable
-              style={({ pressed }) => [styles.row, pressed && styles.pressed, left === 0 && styles.soldOut]}
-              onPress={() => addToCart(item.id, left)}
-              disabled={left === 0}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: left === 0 }}
-              accessibilityLabel={
-                left === 0 ? `${item.name}, agotado` : `Agregar ${item.name}, ${formatCents(item.unit_price_cents)}, quedan ${left}`
-              }
-            >
-              <View style={styles.flex}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={left === 0 ? styles.soldOutText : styles.left}>{left === 0 ? 'Agotado' : `Quedan ${left}`}</Text>
-              </View>
-              <Text style={styles.price}>{formatCents(item.unit_price_cents)}</Text>
-            </Pressable>
-          );
-        }}
+        renderItem={({ item }) => (
+          <ProductTile
+            product={item}
+            left={available.get(item.id) ?? 0}
+            low={low.has(item.id)}
+            qty={qtyById.get(item.id) ?? 0}
+            width={tileWidth}
+            onAdd={addToCart}
+          />
+        )}
         ListEmptyComponent={
-          <Text style={styles.empty}>
+          <AppText style={styles.empty}>
             {products.length ? 'Ningún producto coincide.' : 'No hay catálogo. Actualízalo desde Inventario con red.'}
-          </Text>
+          </AppText>
         }
       />
-      <CartPanel priced={priced} available={available} onCheckout={() => setCheckingOut(true)} />
-      <CheckoutModal visible={checkingOut} totalCents={priced.totalCents} onClose={() => setCheckingOut(false)} />
+      <CartBar priced={priced} onOpen={() => setCheckingOut(true)} />
+      <CheckoutModal visible={checkingOut} priced={priced} available={available} onClose={() => setCheckingOut(false)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  session: { paddingHorizontal: 16, paddingTop: 12, color: '#666' },
-  search: { margin: 16, marginBottom: 8, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 16 },
-  list: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, borderTopWidth: 1, borderColor: '#eee' },
-  pressed: { backgroundColor: '#f2f2f2' },
-  flex: { flex: 1, paddingVertical: 6 },
-  name: { fontSize: 16 },
-  left: { color: '#666', fontSize: 13 },
-  soldOut: { opacity: 0.5 },
-  soldOutText: { color: '#b45309', fontSize: 13, fontWeight: '600' },
-  price: { fontSize: 16, fontVariant: ['tabular-nums'] },
-  empty: { padding: 24, textAlign: 'center', color: '#666' },
+  container: { flex: 1, backgroundColor: colors.background },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 52,
+    marginHorizontal: space.xl,
+    marginBottom: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  searchInput: { flex: 1, fontFamily: fonts.medium, fontSize: 17, color: colors.ink, paddingVertical: 10 },
+  list: { flex: 1, marginTop: space.lg },
+  grid: { paddingHorizontal: space.xl, paddingBottom: space.lg, gap: space.md },
+  columns: { gap: space.md },
+  empty: { padding: space.xxl, textAlign: 'center', color: colors.muted },
 });

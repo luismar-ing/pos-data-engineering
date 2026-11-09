@@ -1,6 +1,11 @@
 import { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { AppText } from '../../../shared/ui/AppText';
+import { Button } from '../../../shared/ui/Button';
+import { ScreenHeader } from '../../../shared/ui/ScreenHeader';
+import { TextField } from '../../../shared/ui/TextField';
+import { colors, space } from '../../../shared/ui/theme';
 import { syncEvents } from '../../../core/sync/syncWorker';
 import { leaseSync } from '../../leases/data/leaseSync';
 import { openSession } from '../data/sessionRepository';
@@ -25,25 +30,29 @@ export function OpenSessionForm() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Abre una sesión para cobrar</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre del vendedor"
-        value={sellerName}
-        onChangeText={setSellerName}
-        autoCapitalize="words"
-        returnKeyType="done"
-        onSubmitEditing={handleOpen}
-        accessibilityLabel="Nombre del vendedor"
-      />
-      <Button title="Abrir sesión" onPress={handleOpen} disabled={busy || !sellerName.trim()} />
+    <View style={styles.screen}>
+      <ScreenHeader title="Venta" />
+      <View style={styles.container}>
+        <AppText variant="heading" accessibilityRole="header">
+          Abre una sesión para cobrar
+        </AppText>
+        <AppText variant="caption">Las ventas quedan a tu nombre. No necesitas red.</AppText>
+        <TextField
+          label="Nombre del vendedor"
+          placeholder="Escribe tu nombre"
+          value={sellerName}
+          onChangeText={setSellerName}
+          autoCapitalize="words"
+          returnKeyType="done"
+          onSubmitEditing={handleOpen}
+        />
+        <Button label={busy ? 'Abriendo…' : 'Abrir sesión'} onPress={handleOpen} disabled={busy || !sellerName.trim()} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 18, fontWeight: '600' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  container: { paddingHorizontal: space.xl, paddingTop: space.lg, gap: 14 },
 });

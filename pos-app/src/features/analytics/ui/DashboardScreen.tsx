@@ -2,23 +2,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { AppText } from '../../../shared/ui/AppText';
+import { Pill } from '../../../shared/ui/Pill';
+import { ScreenHeader } from '../../../shared/ui/ScreenHeader';
+import { colors, fonts, radius, space } from '../../../shared/ui/theme';
 import { formatCents } from '../../../shared/utils/money';
+import { formatTime } from '../../../shared/utils/time';
 import { getDashboard, type Dashboard } from '../data/analyticsRepository';
 import { WINDOW_MINUTES } from '../domain/metrics';
 
-const REFRESH_MS = 15_000; // P3
+const REFRESH_MS = 15_000; // SPEC-009 P3
 
 const rate = (value: number) => value.toFixed(1).replace('.', ',');
-const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const runoutText = (minutes: number) => (minutes < 1 ? 'menos de 1 min' : minutes < 60 ? `${Math.round(minutes)} min` : `${(minutes / 60).toFixed(1).replace('.', ',')} h`);
 
-/** Panel local: ritmo, qué se agota, más vendidos y totales de la sesión (SPEC-009). Funciona sin red. */
+/** Panel local: ritmo, qué se agota, totales y más vendidos de la sesión (SPEC-009, SPEC-012 RF-21..RF-23). Funciona sin red. */
 export function DashboardScreen() {
   const leasesUpdatedAt = useSessionStore((s) => s.leasesUpdatedAt);
   const [data, setData] = useState<Dashboard | null>(null);
   const loading = useRef(false);
 
-  // RNF-1: una consulta a la vez; si llega otra mientras corre, se ignora.
   const reload = useCallback(() => {
     if (loading.current) return;
     loading.current = true;
@@ -30,7 +33,6 @@ export function DashboardScreen() {
       });
   }, []);
 
-  // RF-10: al enfocar y cada 15 s mientras está visible.
   useFocusEffect(
     useCallback(() => {
       reload();
@@ -40,89 +42,117 @@ export function DashboardScreen() {
   );
   useEffect(reload, [leasesUpdatedAt, reload]); // cambia tras cada cobro y cuando cambian los préstamos
 
-  if (!data) return <Text style={styles.empty}>Calculando…</Text>;
-
-  const { session, totals } = data;
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.section}>Ritmo</Text>
-      <Text style={styles.big} accessibilityLabel={`${rate(data.burnRate)} unidades por minuto en los últimos ${WINDOW_MINUTES} minutos`}>
-        {rate(data.burnRate)} u/min
-      </Text>
-      <Text style={styles.muted}>Últimos {WINDOW_MINUTES} min</Text>
-
-      <Text style={styles.section}>Se agota</Text>
-      {data.runout.length === 0 && <Text style={styles.muted}>Sin ventas recientes.</Text>}
-      {data.runout.map((item) => {
-        const left = item.soldOut ? 'Agotado' : runoutText(item.minutesLeft);
-        return (
-          <View key={item.productId} style={styles.row} accessibilityLabel={`${item.name}: ${left}, ${rate(item.ratePerMin)} unidades por minuto`}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.muted}>{rate(item.ratePerMin)} u/min</Text>
-            <Text style={[styles.value, (item.soldOut || item.low) && styles.warning]}>{left}</Text>
-          </View>
-        );
-      })}
-      {data.idleLeases > 0 && <Text style={styles.muted}>{data.idleLeases} productos con préstamo sin ventas recientes</Text>}
-
-      <Text style={styles.section}>Sesión</Text>
-      {!session ? (
-        <Text style={styles.muted}>Todavía no hay sesiones. Abre una desde Venta.</Text>
+    <View style={styles.screen}>
+      <ScreenHeader title="Dashboard" />
+      {!data ? (
+        <AppText style={styles.empty}>Calculando…</AppText>
       ) : (
-        <>
-          <Text style={styles.muted}>
-            {session.closed_at
-              ? `Última sesión: ${session.seller_name}, ${time(session.opened_at)}–${time(session.closed_at)}`
-              : `Sesión de ${session.seller_name} (abierta desde ${time(session.opened_at)})`}
-          </Text>
-          {totals && (
-            <View style={styles.totals}>
-              <Stat label="Ventas" value={String(totals.sales)} />
-              <Stat label="Unidades" value={String(totals.units)} />
-              <Stat label="Ingreso" value={formatCents(totals.revenueCents)} />
-              <Stat label="Ticket promedio" value={formatCents(totals.averageTicketCents)} />
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.hero} accessible accessibilityLabel={`${rate(data.burnRate)} unidades por minuto en los últimos ${WINDOW_MINUTES} minutos`}>
+            <Text style={styles.heroLabel}>Ritmo de venta, últimos {WINDOW_MINUTES} min</Text>
+            <View style={styles.heroRow}>
+              <Text style={styles.heroValue}>{rate(data.burnRate)}</Text>
+              <Text style={styles.heroUnit}>unidades por minuto</Text>
             </View>
-          )}
+          </View>
 
-          <Text style={styles.section}>Más vendidos</Text>
-          {data.top.length === 0 && <Text style={styles.muted}>Sin ventas en esta sesión.</Text>}
-          {data.top.map((product, index) => (
-            <View
-              key={product.product_id}
-              style={styles.row}
-              accessibilityLabel={`${index + 1}. ${product.name}: ${product.units} unidades, ${formatCents(product.revenue_cents)}`}
-            >
-              <Text style={styles.name}>{`${index + 1}. ${product.name}`}</Text>
-              <Text style={styles.muted}>{product.units} u</Text>
-              <Text style={styles.value}>{formatCents(product.revenue_cents)}</Text>
-            </View>
-          ))}
-        </>
+          <AppText variant="heading" style={styles.section} accessibilityRole="header">
+            Se agota primero
+          </AppText>
+          {data.runout.length === 0 && <AppText variant="caption">Sin ventas recientes.</AppText>}
+          {data.runout.map((item) => {
+            const left = item.soldOut ? 'Agotado' : runoutText(item.minutesLeft);
+            return (
+              <View key={item.productId} style={styles.row} accessible accessibilityLabel={`${item.name}: ${left}, ${rate(item.ratePerMin)} unidades por minuto`}>
+                <AppText variant="strong" style={styles.flex}>
+                  {item.name}
+                </AppText>
+                {!item.soldOut && <AppText variant="caption">{rate(item.ratePerMin)} u/min</AppText>}
+                <Pill label={left} tone={item.soldOut ? 'danger' : item.low ? 'alert' : 'neutral'} style={styles.pill} />
+              </View>
+            );
+          })}
+          {data.idleLeases > 0 && <AppText variant="caption">{data.idleLeases} productos con préstamo sin ventas recientes</AppText>}
+
+          {!data.session ? (
+            <AppText variant="caption" style={styles.section}>
+              Todavía no hay sesiones. Abre una desde Venta.
+            </AppText>
+          ) : (
+            <>
+              <AppText variant="heading" style={styles.section} accessibilityRole="header">
+                {data.session.closed_at ? `Última sesión de ${data.session.seller_name}` : `Sesión de ${data.session.seller_name}`}
+              </AppText>
+              <AppText variant="caption">
+                {data.session.closed_at
+                  ? `De ${formatTime(data.session.opened_at)} a ${formatTime(data.session.closed_at)}`
+                  : `Abierta desde las ${formatTime(data.session.opened_at)}`}
+              </AppText>
+              {data.totals && (
+                <View style={styles.totals}>
+                  <Stat label="Ventas" value={String(data.totals.sales)} />
+                  <Stat label="Unidades" value={String(data.totals.units)} />
+                  <Stat label="Ingreso" value={formatCents(data.totals.revenueCents)} />
+                  <Stat label="Ticket promedio" value={formatCents(data.totals.averageTicketCents)} />
+                </View>
+              )}
+              <AppText variant="heading" style={styles.section} accessibilityRole="header">
+                Más vendidos
+              </AppText>
+              {data.top.length === 0 && <AppText variant="caption">Sin ventas en esta sesión.</AppText>}
+              {data.top.map((product, index) => (
+                <View
+                  key={product.product_id}
+                  style={styles.row}
+                  accessible
+                  accessibilityLabel={`${index + 1}. ${product.name}: ${product.units} unidades, ${formatCents(product.revenue_cents)}`}
+                >
+                  <Text style={styles.rank}>{index + 1}</Text>
+                  <AppText variant="strong" style={styles.flex}>
+                    {product.name}
+                  </AppText>
+                  <AppText variant="caption">{product.units} u</AppText>
+                  <AppText variant="figureSmall" style={styles.value}>
+                    {formatCents(product.revenue_cents)}
+                  </AppText>
+                </View>
+              ))}
+            </>
+          )}
+        </ScrollView>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.stat} accessibilityLabel={`${label}: ${value}`}>
-      <Text style={styles.muted}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}`}>
+      <AppText variant="caption">{label}</AppText>
+      <AppText variant="figure" style={styles.statValue} adjustsFontSizeToFit numberOfLines={1}>
+        {value}
+      </AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 6 },
-  empty: { padding: 24, textAlign: 'center', color: '#666' },
-  section: { fontSize: 18, fontWeight: '600', marginTop: 16 },
-  big: { fontSize: 32, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  muted: { color: '#666' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 40, borderTopWidth: 1, borderColor: '#eee' },
-  name: { flex: 1, fontSize: 16 },
-  value: { fontSize: 16, minWidth: 80, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  warning: { color: '#b45309', fontWeight: '600' },
-  totals: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
-  stat: { minWidth: '45%', padding: 8, borderWidth: 1, borderColor: '#eee', borderRadius: 8 },
-  statValue: { fontSize: 18, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  screen: { flex: 1, backgroundColor: colors.background },
+  container: { paddingHorizontal: space.xl, paddingBottom: space.xxl, gap: 6 },
+  flex: { flex: 1 },
+  empty: { padding: space.xxl, textAlign: 'center', color: colors.muted },
+  hero: { backgroundColor: colors.ink, borderRadius: radius.xl, padding: 18 },
+  heroLabel: { fontFamily: fonts.medium, fontSize: 15, color: colors.onAction },
+  heroRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8 },
+  heroValue: { fontFamily: fonts.displayHeavy, fontSize: 64, lineHeight: 70, color: colors.onAction, fontVariant: ['tabular-nums'] },
+  heroUnit: { fontFamily: fonts.displaySemibold, fontSize: 22, color: colors.onAction },
+  section: { marginTop: space.xl },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 48, borderTopWidth: 1, borderColor: colors.line },
+  pill: { alignSelf: 'center' },
+  rank: { width: 22, fontFamily: fonts.displayBold, fontSize: 18, color: colors.muted, fontVariant: ['tabular-nums'] },
+  value: { minWidth: 84, textAlign: 'right' },
+  totals: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
+  stat: { flexBasis: '48%', flexGrow: 1, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.surface },
+  statValue: { fontSize: 24, lineHeight: 28 },
 });

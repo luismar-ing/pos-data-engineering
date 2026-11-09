@@ -10,7 +10,7 @@ SPEC-001 está terminada y verificada, también en teléfono: app y backend comp
 
 ## Repositorio
 
-Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/011-prueba-dos-dispositivos`.
+Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/012-rediseno-visual`.
 
 ## pos-app
 
@@ -66,6 +66,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | SPEC-009 Edge Analytics | 🏁 Done (2026-11-04) |
 | SPEC-010 Recibos QR offline | 🏁 Done (2026-11-05) |
 | SPEC-011 Corte de red con dos dispositivos | 🏁 Done (2026-11-06) |
+| SPEC-012 Rediseño visual "Señalética de feria" | 🚧 In Progress (2026-11-09) |
 
 ## Decisiones pendientes del usuario
 
