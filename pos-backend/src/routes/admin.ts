@@ -6,6 +6,7 @@ import { requireAdmin } from '../http/auth.js';
 import { HttpError } from '../http/errors.js';
 import { login, logout, PASSWORD_MAX } from '../services/adminAuthService.js';
 import { salesSummary } from '../services/adminSalesService.js';
+import { stockReport } from '../services/stockService.js';
 
 export const adminRouter = Router();
 
@@ -45,4 +46,13 @@ adminRouter.post('/logout', async (_req, res) => {
 adminRouter.get('/sales', async (req, res) => {
     const { from, to } = salesQuery.parse(req.query);
     res.json(await salesSummary(pool, from, to));
+});
+
+// RF-13, RF-14: mismo cálculo que `npm run report:stock`.
+adminRouter.get('/stock', async (_req, res) => {
+    const rows = await stockReport(pool);
+    res.json({
+        generated_at: new Date().toISOString(),
+        products: rows.map(({ id, ...row }) => ({ product_id: id, ...row })),
+    });
 });

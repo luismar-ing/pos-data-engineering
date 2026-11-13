@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-13 — SPEC-013 (en curso): backend del panel de administración
+**Spec:** SPEC-013
+**Hecho:** T1–T9. ADR-0007 (autenticación de administrador) y contratos `/admin` en `ARCHITECTURE.md`. Migración 0007 (`admins`, `admin_sessions`, `devices.last_seen_at`, `products.initial_stock`). `stockService` con `initial_stock` (el reporte deja de depender de `SCENARIO_STOCK`). `adminAuthService` + `npm run admin:set`. Rutas `POST /admin/login`, `/admin/logout`, `GET /admin/sales`, `GET /admin/stock`.
+**Verificación:** backend `npm test` 77/77, `tsc` ok. Rendimiento (RNF-6, `test/adminPerf.test.ts`, 10 dispositivos, 2 000 productos, 10 000 ventas de 2 líneas, 4 000 préstamos, PC con Postgres en Docker): `/admin/sales` del día 71–148 ms y `/admin/stock` 59–77 ms, frente al límite de 2 s.
+**Decisiones:** token opaco con hash en vez de JWT y `scrypt` de Node en vez de bcrypt/argon2 (ADR-0007). Un solo 401 `INVALID_CREDENTIALS` para usuario inexistente, contraseña incorrecta y bloqueo. El resumen de ventas lee una sola foto de la BD (`repeatable read`) para que los desgloses sumen el total. Sin índices extra: los tiempos no los piden.
+**Bloqueos / pendientes:** app (T10–T15) y cierre (T16).
+
 ## 2026-11-06 — SPEC-011: Corte de red con dos dispositivos y reintentos de sync
 **Spec:** SPEC-011
 **Hecho:** Spec, plan y tareas aprobados (P1–P5 según propuesta). Backend: `src/dev/scenario.ts` (`SCENARIO_STOCK`, `assertDevDatabase`, `resetScenario`, `STOCK_REPORT_SQL`, `checkStock`) y comandos `npm run scenario:reset` / `report:stock`; pruebas de reporte, lote cortado y envíos simultáneos. App: `markStatement` sale de `applyResults` a `syncSql.ts` para probar la respuesta perdida. Procedimiento en `docs/testing/dos-dispositivos.md`. Cierra TD-027.

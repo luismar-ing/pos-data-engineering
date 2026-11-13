@@ -174,7 +174,7 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 | `POST /admin/login` | `{ username: 3–40, password: 1–200 }` | `{ token: 64 hex, username, expires_at }` | 400 `VALIDATION_ERROR`, 401 `INVALID_CREDENTIALS` | ✅ implementado (SPEC-013) |
 | `POST /admin/logout` 🔑 | — | 204: borra esa sesión | 401 | ✅ implementado (SPEC-013) |
 | `GET /admin/sales?from=ISO&to=ISO` 🔑 | — | resumen de ventas (ver abajo) | 400 `VALIDATION_ERROR` (falta `from`/`to`, `from > to` o rango > 31 días), 401 | ✅ implementado (SPEC-013) |
-| `GET /admin/stock` 🔑 | — | stock por producto (ver abajo) | 401 | ⬜ por implementar (SPEC-013) |
+| `GET /admin/stock` 🔑 | — | stock por producto (ver abajo) | 401 | ✅ implementado (SPEC-013) |
 
 `Lease = { id, product_id, quota_total, quota_used, issued_at, expires_at }` — `expires_at` (3 min) solo indica cuándo renovar: el servidor nunca devuelve stock sin un `close`. Renovar = `close` + `request`. En ambas rutas, si un elemento falla, la petición entera hace rollback.
 
