@@ -10,7 +10,7 @@ SPEC-001 está terminada y verificada, también en teléfono: app y backend comp
 
 ## Repositorio
 
-Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/012-rediseno-visual`.
+Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/013-panel-admin` (sale de `spec/012-rediseno-visual`).
 
 ## pos-app
 
@@ -48,7 +48,7 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | `POST /prestamos/request` y `/close` | ✅ | Exigen dispositivo registrado. Pedir congela la cuota con la fila del producto bloqueada; cerrar devuelve lo no vendido; ambos idempotentes (SPEC-005) |
 | `POST /sync/events` | ✅ | Exige dispositivo registrado. Lotes de 1–50 con `batch_id`; ventas y sesiones; un resultado por evento (`inserted`/`duplicate`/`rejected`); idempotente por `sync_events`; validación completa; no toca stock (SPEC-008) |
 | `leaseService` | ✅ | Tasa por dispositivo desde sus préstamos cerrados (hora del servidor); ventana 5 min, préstamo 3 min, margen 1.2, mínimo 5; con pruebas |
-| Escenario y reporte de stock (`src/dev/scenario.ts`) | ✅ | `npm run scenario:reset` (solo `posde`/`posde_test`) y `npm run report:stock` (central + prestado + informado = inicial; sync ≤ inicial) (SPEC-011) |
+| Escenario y reporte de stock (`src/dev/scenario.ts`, `src/services/stockService.ts`) | ✅ | `npm run scenario:reset` (solo `posde`/`posde_test`) y `npm run report:stock` (central + prestado + informado = inicial; sync ≤ inicial) (SPEC-011) |
 | Tests automatizados | ✅ | `npm test` (node:test), 50 pruebas contra `posde_test`: pedidos simultáneos, lote cortado, envíos simultáneos del mismo lote y reporte de stock |
 
 ## Specs
@@ -67,7 +67,10 @@ Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engin
 | SPEC-010 Recibos QR offline | 🏁 Done (2026-11-05) |
 | SPEC-011 Corte de red con dos dispositivos | 🏁 Done (2026-11-06) |
 | SPEC-012 Rediseño visual "Señalética de feria" | 🚧 In Progress (2026-11-09) |
+| SPEC-013 Panel de administración: rol, login, ventas y stock | 🚧 In Progress (2026-11-12) |
+| SPEC-014 Panel de administración: dispositivos, conciliación y catálogo | 📝 Draft (2026-11-12) |
 
 ## Decisiones pendientes del usuario
 
-1. Ninguna. SPEC-005 (2026-11-03): tasa por dispositivo; el servidor solo devuelve stock con informe del dispositivo (sin plazo de 2 h).
+1. SPEC-013 en curso (2026-11-12): T1 (ADR-0007), T2 (contratos y modelo en `ARCHITECTURE.md`) T3 (migración `0007_admin.sql`, aplicada en `posde`) T4 (`stockService` con `initial_stock`) T5 (`adminAuthService`, `npm run admin:set`) y T6 (`POST /admin/login`, `/admin/logout`, `requireAdmin`, `last_seen_at`) y T7 (`GET /admin/sales`) hechas; siguiente: T8 (`GET /admin/stock`). SPEC-014: preguntas respondidas; faltan `plan.md` y `tasks.md`. SPEC-014 cambia SPEC-005 P3 (tope sin red de 30 min): ADR antes del plan.
+2. SPEC-005 (2026-11-03): tasa por dispositivo; el servidor solo devuelve stock con informe del dispositivo (sin plazo de 2 h).

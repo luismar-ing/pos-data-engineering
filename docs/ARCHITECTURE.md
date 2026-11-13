@@ -125,8 +125,8 @@ Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin re
 
 ### 3.7 Consistencia del stock y prueba con dos dispositivos (SPEC-011)
 1. El stock central solo cambia por los préstamos: pedir resta `quota_total`, cerrar devuelve `quota_total − quota_used`; el sync de ventas no lo toca. Por producto: **stock central + Σ `quota_total` (active) + Σ `quota_used` (released) = stock inicial**.
-2. `npm run report:stock` (`src/dev/scenario.ts` → `STOCK_REPORT_SQL`, `checkStock`) imprime por producto central, prestado, informado, vendido por sync y el total; marca inconsistente si el total no da el stock inicial o si lo vendido por sync lo supera. Solo lee; termina con código 1 si algo no cuadra.
-3. `npm run scenario:reset` borra préstamos, ventas, eventos y sesiones y fija `SCENARIO_STOCK` ("Hot dog" en 10). Solo corre si la base es `posde` o `posde_test` (`assertDevDatabase`). No borra `devices`.
+2. `npm run report:stock` (`src/services/stockService.ts` → `STOCK_REPORT_SQL`, `checkStock`; SPEC-013) imprime por producto stock inicial (`products.initial_stock`), central, prestado, informado, vendido por sync y el total; marca inconsistente si el total no da el stock inicial o si lo vendido por sync lo supera. `checkStock` devuelve códigos estables (`ok`, `no_cuadra`, `sync_supera_stock`, `sin_stock_inicial`) que `GET /admin/stock` reutiliza. Solo lee; termina con código 1 si algo no cuadra.
+3. `npm run scenario:reset` borra préstamos, ventas, eventos y sesiones y fija `SCENARIO_STOCK` ("Hot dog" en 10) como stock central e inicial. Solo corre si la base es `posde` o `posde_test` (`assertDevDatabase`). No borra `devices`.
 4. Procedimiento con un emulador y un teléfono: `docs/testing/dos-dispositivos.md`. Idempotencia de reintentos probada en `sync.test.ts` (lote cortado, envíos simultáneos) y `sync.test.mjs` (respuesta perdida, `markStatement`).
 
 ## 4. Modelo de datos
@@ -141,7 +141,7 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 | `products` | Copia local del catálogo (`unit_price_cents`); `active = 0` si ya no viene del servidor. No guarda stock: el stock vendible offline es la suma de leases activos |
 | `stock_leases` | Préstamos recibidos (v3): `quota_total`, `quota_used ≤ quota_total`, `quota_reported`, `status` `active`/`closing`/`released`, `issued_at` (servidor), `renew_at` (hora local); uno activo por producto; `id` lo emite el servidor |
 | `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2); índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)` para el panel (v5) |
-| `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004) |
+| `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004); `role` = `seller`/`admin` (SPEC-013, ⬜ por implementar; sin migración). El token de administrador va en SecureStore (`admin_session`), no aquí |
 | `sessions` | Sesiones de vendedor; índice único parcial ⇒ solo una con `closed_at is null` (v2) |
 | `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` y `session_opened`/`session_closed` llevan `{ session }` en `payload_json`; `sync_status`, `synced_at`, `sync_error` (v4) |
 
@@ -150,12 +150,14 @@ Se aplican con `npm run db:migrate` (ADR-0006): una transacción por archivo, re
 
 | Tabla | Propósito |
 |---|---|
-| `products` | Catálogo + `central_stock` (`unit_price_cents`) |
-| `devices` | Dispositivos registrados; `token_hash` = sha256 del secreto (índice único) |
+| `products` | Catálogo + `central_stock` (`unit_price_cents`); `initial_stock` para el reporte de stock (0007, SPEC-013) |
+| `devices` | Dispositivos registrados; `token_hash` = sha256 del secreto (índice único); `last_seen_at` = última petición autenticada (0007; lo marca `requireDevice`) |
 | `sales` / `sale_items` | Ventas recibidas; PK `sales.id` ⇒ idempotencia; FK `sales.device_id → devices`; `session_id` |
 | `stock_leases` | Préstamos emitidos: FK a `devices`, `status` `active`/`released`, `closed_at`; uno activo por dispositivo y producto (0005) |
 | `sync_events` | Un registro por evento recibido (`event_id` PK, `device_id`, `event_type`, `batch_id`, `received_at`): idempotencia de todos los tipos (0006) |
 | `sessions` | Sesiones de vendedor recibidas: `seller_name`, `opened_at`, `closed_at` (cualquiera puede llegar primero) (0006) |
+| `admins` | Cuentas de administrador: `username` único (`^[a-z0-9._-]{3,40}$`), `password_hash` (`scrypt$N$r$p$sal$hash`, ADR-0007), `failed_attempts`, `locked_until` (0007) |
+| `admin_sessions` | Sesiones de administrador: `token_hash` (sha256 del token, PK), FK `admin_id → admins` (`on delete cascade`), `expires_at` = login + 8 h (0007) |
 
 ## 5. Contratos HTTP
 
@@ -169,6 +171,10 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 | `POST /prestamos/request` 🔒 | `{ product_ids: uuid[] }` (1–200, sin repetidos) | `{ leases: Lease[], unavailable: uuid[] }`: el préstamo activo de cada producto (existente o nuevo, ya congelado); `unavailable` = sin stock, inactivo o inexistente | 400 `VALIDATION_ERROR`, 401 | ✅ implementado |
 | `POST /prestamos/close` 🔒 | `{ leases: [{ lease_id: uuid, quota_used: int ≥ 0 }] }` (1–200) | `{ closed: uuid[] }`: devuelve `quota_total - quota_used` al stock central; incluye los ya cerrados (idempotente) | 400 `VALIDATION_ERROR`, 400 `INVALID_QUOTA_USED`, 404 `LEASE_NOT_FOUND`, 401 | ✅ implementado |
 | `POST /sync/events` 🔒 | ver abajo (1–50 eventos) | `{ batch_id, results: [{ event_id, status, reason? }], inserted, duplicated, rejected }` | 400 `VALIDATION_ERROR` si el sobre es inválido (sin `batch_id`, `events` vacío o > 50, `event_id` no UUID o repetido); 401; 413. Un evento inválido o de otro dispositivo **no** da error: va como `rejected` | ✅ implementado |
+| `POST /admin/login` | `{ username: 3–40, password: 1–200 }` | `{ token: 64 hex, username, expires_at }` | 400 `VALIDATION_ERROR`, 401 `INVALID_CREDENTIALS` | ✅ implementado (SPEC-013) |
+| `POST /admin/logout` 🔑 | — | 204: borra esa sesión | 401 | ✅ implementado (SPEC-013) |
+| `GET /admin/sales?from=ISO&to=ISO` 🔑 | — | resumen de ventas (ver abajo) | 400 `VALIDATION_ERROR` (falta `from`/`to`, `from > to` o rango > 31 días), 401 | ✅ implementado (SPEC-013) |
+| `GET /admin/stock` 🔑 | — | stock por producto (ver abajo) | 401 | ⬜ por implementar (SPEC-013) |
 
 `Lease = { id, product_id, quota_total, quota_used, issued_at, expires_at }` — `expires_at` (3 min) solo indica cuándo renovar: el servidor nunca devuelve stock sin un `close`. Renovar = `close` + `request`. En ambas rutas, si un elemento falla, la petición entera hace rollback.
 
@@ -189,6 +195,30 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 
 🔒 = exige `Authorization: Bearer <secreto>` de un dispositivo registrado.
 
+🔑 = exige `Authorization: Bearer <token>` de una sesión de administrador vigente (ADR-0007). Un secreto de dispositivo no sirve en 🔑 y un token de administrador no sirve en 🔒.
+
+`POST /admin/login`: usuario inexistente, contraseña incorrecta y usuario bloqueado (5 fallos seguidos ⇒ 15 min) dan el mismo 401 `INVALID_CREDENTIALS`. La sesión vence a las 8 h. Repetir `logout` con el mismo token da 401 sin efectos.
+
+`GET /admin/sales` — response (rango `[from, to)` por `sales.created_at`, hora del teléfono al cobrar; todo sale de una misma foto de la BD, así los desgloses suman el total):
+```json
+{ "generated_at": "ISO", "from": "ISO", "to": "ISO",
+  "totals": { "revenue_cents": 0, "sales": 0, "average_ticket_cents": 0 },
+  "by_device": [ { "device_id", "name", "revenue_cents", "sales", "last_seen_at": "ISO|null", "last_sync_at": "ISO|null" } ],
+  "by_session": [ { "session_id": "uuid|null", "seller_name": "…|null", "device_id", "revenue_cents", "sales" } ],
+  "by_hour": [ { "hour": "ISO (UTC, inicio de la hora)", "revenue_cents", "sales" } ],
+  "by_payment_method": [ { "payment_method", "revenue_cents", "sales" } ],
+  "top_products": [ { "product_id", "name", "units", "revenue_cents" } ] }
+```
+`by_device` incluye los dispositivos sin ventas en el rango. `top_products` trae como máximo 5. `last_sync_at` = último `sync_events.received_at` del dispositivo.
+
+`GET /admin/stock` — response:
+```json
+{ "generated_at": "ISO",
+  "products": [ { "product_id", "name", "initial_stock": "int|null", "central_stock", "leased_active", "reported_sold",
+                  "synced_sold", "balance", "status": "ok" | "no_cuadra" | "sync_supera_stock" | "sin_stock_inicial" } ] }
+```
+Mismo cálculo que `npm run report:stock` (§3.7): `balance` = central + prestado + informado; `ok` si es igual a `initial_stock` y `synced_sold` no lo supera.
+
 Errores (todas las rutas, ADR-0006):
 ```json
 { "error": { "code": "VALIDATION_ERROR", "message": "Datos de entrada inválidos",
@@ -200,7 +230,8 @@ Errores (todas las rutas, ADR-0006):
 | `INVALID_JSON` | 400 | JSON mal formado |
 | `PAYLOAD_TOO_LARGE` | 413 | Cuerpo mayor que el límite de `express.json()` (100 kB) |
 | `BAD_REQUEST` | 4xx | Otro error del parser de cuerpo (p. ej. 415 codificación no soportada) |
-| `UNAUTHORIZED` | 401 | Ruta 🔒 sin credencial o con una desconocida |
+| `UNAUTHORIZED` | 401 | Ruta 🔒 o 🔑 sin credencial, con una desconocida o con una sesión de administrador vencida |
+| `INVALID_CREDENTIALS` | 401 | `POST /admin/login` con usuario inexistente, contraseña incorrecta o usuario bloqueado (mismo mensaje en los tres casos) |
 | `DEVICE_CONFLICT` | 409 | Registro con un `device_id` ya usado con otro secreto |
 | `NOT_FOUND` | 404 | Ruta inexistente |
 | `LEASE_NOT_FOUND` | 404 | El préstamo no existe o es de otro dispositivo |

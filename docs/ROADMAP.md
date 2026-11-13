@@ -29,3 +29,8 @@ Objetivo: vender sin red sin sobrevender.
 - Pruebas de corte de red con ≥ 2 dispositivos concurrentes.
 - Pruebas de reintento de sync (duplicados, lotes parciales).
 - Datos semilla y guion de demo.
+
+## Fase 5 — Administración  ⬜ por iniciar
+Objetivo: que el administrador vea y controle el evento desde la app, con login.
+- SPEC-013 Panel de administración: rol, login, ventas y stock (🚧 en curso)
+- SPEC-014 Panel de administración: dispositivos, conciliación y catálogo (📝 Draft; incluye el tope sin red de 30 min, que cambia SPEC-005 P3 y requiere ADR)
