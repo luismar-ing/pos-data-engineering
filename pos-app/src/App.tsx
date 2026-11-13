@@ -19,6 +19,9 @@ import { leaseSync } from './features/leases/data/leaseSync';
 import { getCatalogSyncedAt } from './features/inventory/data/catalogRepository';
 import { syncCatalog } from './features/inventory/data/catalogSync';
 import { getOpenSession } from './features/session/data/sessionRepository';
+import { getRole, setRole } from './features/admin/data/roleRepository';
+import { clearAdminSession, loadAdminSession } from './features/admin/data/adminSession';
+import { isSessionValid } from './features/admin/domain/session';
 import { useSessionStore } from './shared/store/sessionStore';
 import { RootNavigator } from './navigation/RootNavigator';
 import { colors, fonts } from './shared/ui/theme';
@@ -47,8 +50,18 @@ export default function App() {
       .then(async (database) => {
         await getDeviceIdentity(); // RF-1: crea la identidad en el primer arranque, sin red
         const store = useSessionStore.getState();
-        store.setCurrentSession(await getOpenSession()); // RF-10
+        const openSession = await getOpenSession();
+        store.setCurrentSession(openSession); // RF-10
         store.setCatalogSyncedAt(await getCatalogSyncedAt(database));
+        // SPEC-013 RF-3, RF-8: rol guardado y sesión de admin solo si sigue vigente.
+        // En iOS el almacén seguro sobrevive a desinstalar: sin rol admin, una sesión vieja se borra.
+        // Instalaciones anteriores a SPEC-013 no tienen rol: con una sesión de vendedor abierta siguen como vendedor (RF-4).
+        const role = (await getRole()) ?? (openSession ? 'seller' : null);
+        if (role) await setRole(role);
+        store.setRole(role);
+        const adminSession = role === 'admin' ? await loadAdminSession() : null;
+        if (isSessionValid(adminSession, Date.now())) store.setAdminSession(adminSession);
+        else await clearAdminSession();
         setDb({ status: 'ready' });
         void ensureRegistered(); // RF-2: en segundo plano, sin bloquear la UI
         // SPEC-004 RF-1: sin red sigue con el catálogo guardado; el error se ve al actualizar desde Inventario.

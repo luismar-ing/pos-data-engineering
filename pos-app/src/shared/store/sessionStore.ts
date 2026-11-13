@@ -1,9 +1,17 @@
 import { create } from "zustand";
 import type { Session } from "../../features/session/data/sessionRepository";
 import { addProduct, changeQuantity, removeLine, type CartLine } from "../../features/sales/domain/cart";
+import type { Role } from "../../features/admin/domain/role";
+import type { AdminSession } from "../../features/admin/domain/session";
 
 interface SessionState {
     isOnline: boolean;
+    /** Rol elegido al abrir la app (SPEC-013); null = mostrar la selección. Se guarda con `roleRepository`. */
+    role: Role | null;
+    setRole: (role: Role | null) => void;
+    /** Sesión de administrador vigente (SPEC-013); null = mostrar el login. Se guarda con `adminSession`. */
+    adminSession: AdminSession | null;
+    setAdminSession: (session: AdminSession | null) => void;
     /** Sesión de vendedor abierta en este dispositivo (SPEC-003); null si no hay. */
     currentSession: Session | null;
     setCurrentSession: (session: Session | null) => void;
@@ -28,6 +36,10 @@ interface SessionState {
 
 export const useSessionStore = create<SessionState>((set) => ({
     isOnline: true,
+    role: null,
+    setRole: (role) => set({ role }),
+    adminSession: null,
+    setAdminSession: (session) => set({ adminSession: session }),
     currentSession: null,
     setCurrentSession: (session) => set({ currentSession: session }),
     catalogSyncedAt: null,

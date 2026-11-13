@@ -7,6 +7,8 @@ import { colors, fonts, space } from './theme';
 /** Aviso "Sin conexión" sobre cada pestaña (SPEC-006 RF-6, SPEC-012 RF-26). No se muestra con conexión. */
 export function OfflineBanner() {
   const isOnline = useSessionStore((state) => state.isOnline);
+  // SPEC-013 RNF-5: el panel de administración no funciona sin red.
+  const message = useSessionStore((state) => state.role === 'admin') ? 'Sin conexión. El panel necesita red.' : 'Sin conexión. Vendes con lo que tienes prestado.';
   const { top } = useSafeAreaInsets();
   if (isOnline) return null;
   return (
@@ -14,11 +16,11 @@ export function OfflineBanner() {
       accessible
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
-      accessibilityLabel="Sin conexión. Vendes con lo que tienes prestado."
+      accessibilityLabel={message}
       style={[styles.banner, { paddingTop: top + 10 }]}
     >
       <Icon name="sinRed" size={22} strokeWidth={2.2} />
-      <Text style={styles.text}>Sin conexión. Vendes con lo que tienes prestado.</Text>
+      <Text style={styles.text}>{message}</Text>
     </View>
   );
 }

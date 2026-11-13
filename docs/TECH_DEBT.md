@@ -6,6 +6,7 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Sev. | Repo | Ubicación | Problema | Se resuelve en |
 |---|---|---|---|---|---|
+| TD-030 | ⚪ | app | `App.tsx` (arranque), `features/leases/data/leaseSync.ts` | Al abrir la app, el primer ciclo de préstamos puede chocar con la descarga del catálogo: "Préstamos pendientes: database is locked" (visto en el emulador el 2026-11-13). El siguiente ciclo (30 s) funciona; no se pierde nada | Si el primer préstamo tarda en llegar al abrir |
 | TD-028 | 🟡 | backend | — | No se concilia lo que cada teléfono informó al cerrar préstamos con las ventas que llegan por sync (SPEC-008 P6): las líneas de venta no dicen de qué préstamo salieron | SPEC-014 (RF-8 a RF-12) |
 | TD-029 | ⚪ | app | `core/sync/syncBatch.ts` | Un evento de más de 80 kB (venta con cientos de líneas) va solo en su lote y podría pasar del límite de 100 kB del servidor (413): frenaría la cola en ese evento | Si aparecen ventas tan grandes |
 | TD-025 | 🟡 | backend | `services/leaseService.ts` | La cuota de un teléfono perdido o desinstalado queda congelada para siempre: el servidor solo devuelve stock con `close` (SPEC-005 RF-15). Falta una forma de liberarla a mano | SPEC-014 (RF-2 a RF-5) |

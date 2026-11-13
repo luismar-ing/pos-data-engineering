@@ -16,8 +16,10 @@ import { colors, space } from '../../../shared/ui/theme';
 import { formatTime } from '../../../shared/utils/time';
 import { leaseSync } from '../../leases/data/leaseSync';
 import { closeSession } from '../../session/data/sessionRepository';
+import { applyRole } from '../../admin/data/roleRepository';
+import { canSwitchRole } from '../../admin/domain/role';
 
-/** Ajustes: dispositivo, sesión abierta (SPEC-003 RF-13) y estado de la sincronización (SPEC-008 RF-16). */
+/** Ajustes: dispositivo, sesión abierta (SPEC-003 RF-13), rol (SPEC-013 RF-3, RF-4) y estado de la sincronización (SPEC-008 RF-16). */
 export function SettingsScreen() {
   const session = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
@@ -107,6 +109,13 @@ export function SettingsScreen() {
           ) : (
             <AppText variant="caption">No hay sesión abierta. Ábrela desde Venta.</AppText>
           )}
+        </Card>
+
+        <Card title="Rol">
+          <AppText variant="caption">
+            {canSwitchRole(!!session) ? 'Usas la app como vendedor.' : 'Cierra la sesión de vendedor para cambiar de rol.'}
+          </AppText>
+          <Button label="Cambiar de rol" variant="outline" compact onPress={() => run(() => applyRole(null))} disabled={busy || !canSwitchRole(!!session)} />
         </Card>
 
         <Card title="Sincronización">

@@ -141,7 +141,7 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 | `products` | Copia local del catálogo (`unit_price_cents`); `active = 0` si ya no viene del servidor. No guarda stock: el stock vendible offline es la suma de leases activos |
 | `stock_leases` | Préstamos recibidos (v3): `quota_total`, `quota_used ≤ quota_total`, `quota_reported`, `status` `active`/`closing`/`released`, `issued_at` (servidor), `renew_at` (hora local); uno activo por producto; `id` lo emite el servidor |
 | `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2); índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)` para el panel (v5) |
-| `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004); `role` = `seller`/`admin` (SPEC-013, ⬜ por implementar; sin migración). El token de administrador va en SecureStore (`admin_session`), no aquí |
+| `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004); `role` = `seller`/`admin` (SPEC-013; sin migración; una instalación anterior con sesión de vendedor abierta arranca como `seller`). El token de administrador va en SecureStore (`admin_session`), no aquí |
 | `sessions` | Sesiones de vendedor; índice único parcial ⇒ solo una con `closed_at is null` (v2) |
 | `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` y `session_opened`/`session_closed` llevan `{ session }` en `payload_json`; `sync_status`, `synced_at`, `sync_error` (v4) |
 
