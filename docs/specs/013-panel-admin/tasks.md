@@ -11,7 +11,7 @@ Rama: `spec/013-panel-admin`
 - [x] **T7** [backend] `adminSalesService.ts` y `GET /admin/sales` — *Verificación:* prueba con dos dispositivos: cada desglose suma los totales (CA-9); validación de rango (depende de T6)
 - [x] **T8** [backend] `GET /admin/stock` sobre `stockService` — *Verificación:* tras el escenario de SPEC-011, coincide con `stockReport` y marca `ok` (CA-10) (depende de T4, T6)
 - [x] **T9** [backend] Prueba de rendimiento: 10 dispositivos, 2 000 productos, 10 000 ventas; `/admin/sales` y `/admin/stock` < 2 s — *Verificación:* `npm test` en verde y tiempos en el DEVLOG (RNF-6) (depende de T7, T8)
-- [ ] **T10** [app] `admin/domain/role.ts` y `session.ts` con `test/admin.test.mjs` — *Verificación:* `npm test` en verde
+- [x] **T10** [app] `admin/domain/role.ts` y `session.ts` con `test/admin.test.mjs` — *Verificación:* `npm test` en verde
 - [ ] **T11** [app] `roleRepository.ts`, `adminSession.ts` (SecureStore), store (`role`, `adminSession`) y lectura al arrancar en `App.tsx` — *Verificación:* `npx tsc --noEmit`; al reabrir, el rol guardado se respeta (depende de T10)
 - [ ] **T12** [app] `RoleSelectScreen` y `RootNavigator` por rol; "Cambiar de rol" en Ajustes, deshabilitado con sesión de vendedor abierta — *Verificación:* en el emulador, CA-1, CA-2 y CA-3 (depende de T11)
 - [ ] **T13** [app] `adminApi.ts` y `AdminLoginScreen`: error genérico, deshabilitado sin red, un 401 vuelve al login — *Verificación:* en el emulador contra el backend local, CA-4 y CA-6 (depende de T6, T12)
