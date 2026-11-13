@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, test } from 'node:test';
-import { assertDevDatabase, checkStock, resetScenario, stockReport, type StockRow } from '../src/dev/scenario.js';
+import { assertDevDatabase, resetScenario } from '../src/dev/scenario.js';
+import { checkStock, stockReport, type StockRow } from '../src/services/stockService.js';
 import { pool, postJson, registerDevice, resetDb, startServer } from './helpers.js';
 
 const HOT_DOG = '55555555-5555-4555-8555-555555555555';
@@ -47,18 +48,12 @@ test('assertDevDatabase: solo posde y posde_test (CA-9, RNF-3)', () => {
     assert.throws(() => assertDevDatabase('no es url'), /válida/);
 });
 
-test('checkStock: ok, total que no cuadra, sync de más y producto sin escenario (CA-8)', () => {
-    const row = (id: string, central: number, active: number, reported: number, synced: number): StockRow => ({
-        id, name: id, central_stock: central, leased_active: active, reported_sold: reported, synced_sold: synced,
+test('checkStock: ok, total que no cuadra, sync de más y producto sin stock inicial (CA-8)', () => {
+    const row = (id: string, initial: number | null, central: number, active: number, reported: number, synced: number): StockRow => ({
+        id, name: id, initial_stock: initial, central_stock: central, leased_active: active, reported_sold: reported, synced_sold: synced,
     });
-    const initial = { a: 10, b: 10, c: 10 };
-    const result = checkStock([row('a', 0, 5, 5, 5), row('b', 1, 5, 5, 5), row('c', 0, 5, 5, 11), row('d', 3, 0, 0, 0)], initial);
-    assert.deepEqual(result.map((r) => r.status), [
-        'ok',
-        'inconsistente: el total no cuadra',
-        'inconsistente: sync vende más que el stock',
-        'sin escenario',
-    ]);
+    const result = checkStock([row('a', 10, 0, 5, 5, 5), row('b', 10, 1, 5, 5, 5), row('c', 10, 0, 5, 5, 11), row('d', null, 3, 0, 0, 0)]);
+    assert.deepEqual(result.map((r) => r.status), ['ok', 'no_cuadra', 'sync_supera_stock', 'sin_stock_inicial']);
     assert.deepEqual(result.map((r) => r.balance), [10, 11, 10, 3]);
 });
 
@@ -69,8 +64,8 @@ test('el reinicio deja Hot dog en 10 sin préstamos, ventas ni sesiones', async 
     await resetScenario(pool);
 
     const row = await hotDog();
-    assert.deepEqual({ central: row.central_stock, active: row.leased_active, reported: row.reported_sold, synced: row.synced_sold, status: row.status },
-        { central: 10, active: 0, reported: 0, synced: 0, status: 'ok' });
+    assert.deepEqual({ initial: row.initial_stock, central: row.central_stock, active: row.leased_active, reported: row.reported_sold, synced: row.synced_sold, status: row.status },
+        { initial: 10, central: 10, active: 0, reported: 0, synced: 0, status: 'ok' });
     for (const table of ['stock_leases', 'sales', 'sale_items', 'sync_events', 'sessions']) {
         assert.equal((await pool.query(`select count(*)::int as n from ${table}`)).rows[0].n, 0, table);
     }
@@ -105,10 +100,10 @@ test('datos alterados salen inconsistentes y los demás productos no (CA-8)', as
     const device = await registerDevice(server.url);
     await lease(device, HOT_DOG);
     await pool.query('update products set central_stock = central_stock + 1 where id = $1', [HOT_DOG]);
-    assert.equal((await hotDog()).status, 'inconsistente: el total no cuadra');
+    assert.equal((await hotDog()).status, 'no_cuadra');
 
     await resetScenario(pool);
     await sell(device, HOT_DOG, 11); // el servidor acepta ventas por sync sin mirar el stock (SPEC-008 RF-11)
-    assert.equal((await hotDog()).status, 'inconsistente: sync vende más que el stock');
+    assert.equal((await hotDog()).status, 'sync_supera_stock');
     assert.equal((await stockReport(pool)).find((r) => r.id === WATER)!.status, 'ok');
 });

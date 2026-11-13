@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { after, test } from 'node:test';
 import { migrate } from '../src/db/migrate.js';
 import { pool } from './helpers.js';
@@ -27,5 +28,42 @@ test('migración con SQL roto: lanza error y no deja nada aplicado (CA-4)', asyn
         assert.equal(rows[0].registered, false);
     } finally {
         await rm(dir, { recursive: true, force: true });
+    }
+});
+
+test('0007 sobre una base con préstamos: initial_stock deja todo cuadrando (SPEC-013 plan §4)', async () => {
+    const migrations = fileURLToPath(new URL('../db/migrations', import.meta.url));
+    const before = await mkdtemp(path.join(tmpdir(), 'posde-0006-'));
+    try {
+        for (const file of (await readdir(migrations)).filter((f) => f.endsWith('.sql') && f < '0007')) {
+            await copyFile(path.join(migrations, file), path.join(before, file));
+        }
+        // Base vacía en el estado de 0006 (solo posde_test: ver test/env.ts).
+        await pool.query('drop schema public cascade; create schema public;');
+        await migrate(pool, before);
+
+        await pool.query(`insert into devices (id, name) values ('d1', 'Uno')`);
+        await pool.query(
+            `insert into products (id, name, unit_price_cents, central_stock) values
+                ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Con préstamos', 100, 40),
+                ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Sin préstamos', 100, 7)`
+        );
+        // Prestado 10 (active) + informado 3 de un préstamo de 5 (released; los otros 2 ya volvieron al central).
+        await pool.query(
+            `insert into stock_leases (device_id, product_id, quota_total, quota_used, status, closed_at) values
+                ('d1', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 10, 4, 'active', null),
+                ('d1', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 5, 3, 'released', now())`
+        );
+
+        assert.deepEqual(await migrate(pool), ['0007_admin.sql']);
+        const { rows } = await pool.query<{ name: string; initial_stock: number }>(
+            'select name, initial_stock from products order by name'
+        );
+        assert.deepEqual(rows, [
+            { name: 'Con préstamos', initial_stock: 40 + 10 + 3 },
+            { name: 'Sin préstamos', initial_stock: 7 },
+        ]);
+    } finally {
+        await rm(before, { recursive: true, force: true });
     }
 });

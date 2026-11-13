@@ -1,4 +1,4 @@
-// SPEC-011: escenario de prueba con dos dispositivos y reporte de consistencia del stock. Solo desarrollo.
+// SPEC-011: escenario de prueba con dos dispositivos. Solo desarrollo. El reporte de stock está en services/stockService.ts (SPEC-013).
 import type { Pool } from 'pg';
 import { seed } from '../db/migrate.js';
 
@@ -26,7 +26,7 @@ export function assertDevDatabase(dbUrl: string): void {
     }
 }
 
-/** Deja el backend como al inicio del escenario: sin préstamos, ventas, eventos ni sesiones, y con SCENARIO_STOCK (RF-2). */
+/** Deja el backend como al inicio del escenario: sin préstamos, ventas, eventos ni sesiones, y con SCENARIO_STOCK como stock central e inicial (RF-2). */
 export async function resetScenario(pool: Pool): Promise<void> {
     await seed(pool); // on conflict do nothing: solo asegura que existan los productos
     const client = await pool.connect();
@@ -39,7 +39,7 @@ export async function resetScenario(pool: Pool): Promise<void> {
         await client.query('delete from sessions');
         await client.query('delete from stock_leases');
         for (const [id, stock] of Object.entries(SCENARIO_STOCK)) {
-            await client.query('update products set central_stock = $2, active = true where id = $1', [id, stock]);
+            await client.query('update products set central_stock = $2, initial_stock = $2, active = true where id = $1', [id, stock]);
         }
         await client.query('commit');
     } catch (error) {
@@ -48,54 +48,4 @@ export async function resetScenario(pool: Pool): Promise<void> {
     } finally {
         client.release();
     }
-}
-
-/** Por producto: stock central, cuota activa, vendido informado al cerrar y unidades por sync (RF-4). Solo lectura (RF-6). */
-export const STOCK_REPORT_SQL = `
-    select p.id, p.name, p.central_stock,
-           coalesce(sum(l.quota_total) filter (where l.status = 'active'), 0)::int as leased_active,
-           coalesce(sum(l.quota_used) filter (where l.status = 'released'), 0)::int as reported_sold,
-           (select coalesce(sum(si.quantity), 0) from sale_items si where si.product_id = p.id)::int as synced_sold
-    from products p
-    left join stock_leases l on l.product_id = p.id
-    group by p.id
-    order by p.name
-`;
-
-export interface StockRow {
-    id: string;
-    name: string;
-    central_stock: number;
-    leased_active: number;
-    reported_sold: number;
-    synced_sold: number;
-}
-
-export interface StockCheck extends StockRow {
-    initial: number | null;
-    /** Debe ser igual al stock inicial: lo que salió del stock central solo pasa por los préstamos. */
-    balance: number;
-    status: 'ok' | 'inconsistente: el total no cuadra' | 'inconsistente: sync vende más que el stock' | 'sin escenario';
-}
-
-/** Compara cada producto con su stock inicial (RF-5). */
-export function checkStock(rows: StockRow[], initial: Record<string, number> = SCENARIO_STOCK): StockCheck[] {
-    return rows.map((row) => {
-        const start = initial[row.id] ?? null;
-        const balance = row.central_stock + row.leased_active + row.reported_sold;
-        const status: StockCheck['status'] =
-            start === null
-                ? 'sin escenario'
-                : row.synced_sold > start
-                  ? 'inconsistente: sync vende más que el stock'
-                  : balance !== start
-                    ? 'inconsistente: el total no cuadra'
-                    : 'ok';
-        return { ...row, initial: start, balance, status };
-    });
-}
-
-export async function stockReport(pool: Pool): Promise<StockCheck[]> {
-    const { rows } = await pool.query<StockRow>(STOCK_REPORT_SQL);
-    return checkStock(rows);
 }
