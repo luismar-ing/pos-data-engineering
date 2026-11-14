@@ -15,7 +15,7 @@ Guía: [SPEC_GUIDE.md](SPEC_GUIDE.md) · Plantillas: [_template/](_template/)
 | [SPEC-009](009-edge-analytics/spec.md) | Edge Analytics (Burn Rate, Runout Time, top productos) | 3 | app | 005, 007 | 🏁 Done |
 | [SPEC-010](010-recibo-qr/spec.md) | Recibos QR offline | 3 | app | 007 | 🏁 Done |
 | [SPEC-011](011-prueba-dos-dispositivos/spec.md) | Corte de red con dos dispositivos y reintentos de sync | 4 | backend, app, docs | 005, 006, 008 | 🏁 Done |
-| [SPEC-012](012-rediseno-visual/spec.md) | Rediseño visual "Señalética de feria" | 4 | app | 003–010 | 🚧 In Progress |
+| [SPEC-012](012-rediseno-visual/spec.md) | Rediseño visual "Señalética de feria" | 4 | app | 003–010 | 🏁 Done |
 | [SPEC-013](013-panel-admin/spec.md) | Panel de administración: rol, login, ventas y stock | 5 | app, backend | 002, 003, 008, 011, 012 | 🚧 In Progress |
 | [SPEC-014](014-admin-acciones/spec.md) | Panel de administración: dispositivos, conciliación y catálogo | 5 | app, backend | 013, 004, 005, 007, 008 | 📝 Draft |
 

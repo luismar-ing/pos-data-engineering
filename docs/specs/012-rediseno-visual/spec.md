@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | In Progress |
+| Estado | Done |
 | Fase | 4 |
 | Repos | app |
 | Depende de | SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-007, SPEC-008, SPEC-009, SPEC-010 |
 | Creada | 2026-11-09 |
-| Actualizada | 2026-11-09 |
+| Actualizada | 2026-11-13 |
 
 ## 1. Contexto y problema
 
@@ -127,3 +127,6 @@ Ninguna. Ver Decisiones.
 | 2026-11-09 | P1–P5 resueltas con las respuestas propuestas | Aprobación del usuario |
 | 2026-11-09 | En la hoja de cobro, los botones ("Cancelar" / "Confirmar cobro" y "Nueva venta") quedan fijos al pie | Con 3 líneas o con el QR, el contenido no cabe y los botones quedaban fuera de la vista |
 | 2026-11-09 | Inventario agrupa los productos sin categoría al final, en "Sin categoría" | RF-20 no decía dónde van |
+| 2026-11-10 | CA-12 (cobro < 100 ms) se midió en el emulador `pos_pixel` en modo avión, no en teléfono físico: 76–104 ms, mediana 86 | Decisión del usuario. Queda TD-031 para confirmarlo en teléfono |
+| 2026-11-10 | CA-6: el QR se decodificó desde capturas con `jsqr` en vez de con la cámara de otro teléfono (el emulador no tiene cámara) | Mismo texto que SPEC-010 (235 bytes) |
+| 2026-11-13 | Done | CA-1..CA-13 verificados (T3–T12); CA-6 y CA-12 con las salvedades de arriba |

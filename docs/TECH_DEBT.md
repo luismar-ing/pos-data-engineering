@@ -6,6 +6,7 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Sev. | Repo | Ubicación | Problema | Se resuelve en |
 |---|---|---|---|---|---|
+| TD-031 | ⚪ | app | — | SPEC-012 CA-12 (cobro sin red < 100 ms) se midió en el emulador (76–104 ms), no en un teléfono físico | Próxima prueba con el iPhone |
 | TD-030 | ⚪ | app | `App.tsx` (arranque), `features/leases/data/leaseSync.ts` | Al abrir la app, el primer ciclo de préstamos puede chocar con la descarga del catálogo: "Préstamos pendientes: database is locked" (visto en el emulador el 2026-11-13). El siguiente ciclo (30 s) funciona; no se pierde nada | Si el primer préstamo tarda en llegar al abrir |
 | TD-028 | 🟡 | backend | — | No se concilia lo que cada teléfono informó al cerrar préstamos con las ventas que llegan por sync (SPEC-008 P6): las líneas de venta no dicen de qué préstamo salieron | SPEC-014 (RF-8 a RF-12) |
 | TD-029 | ⚪ | app | `core/sync/syncBatch.ts` | Un evento de más de 80 kB (venta con cientos de líneas) va solo en su lote y podría pasar del límite de 100 kB del servidor (413): frenaría la cola en ese evento | Si aparecen ventas tan grandes |

@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-13 — SPEC-012: cierre del rediseño visual
+**Spec:** SPEC-012
+**Hecho:** T13. La app con la Propuesta A "Señalética de feria" (fuentes Barlow, `theme.ts`, componentes en `shared/ui`, Venta en cuadrícula con categorías y buscador, hoja de cobro, Inventario, Dashboard y Ajustes) quedó en `c27be0e`; esta entrada cierra la spec.
+**Verificación:** T12 (2026-11-10) en el emulador `pos_pixel` en modo avión: 7 cobros en 76–104 ms (mediana 86) frente a 97–206 ms antes del rediseño (`8a6e2ec`); QR decodificado con `jsqr` (235 bytes, formato SPEC-010); 12 ventas sincronizadas al volver la red y `report:stock` en `ok`.
+**Decisiones:** CA-12 se midió en el emulador y no en teléfono físico, por decisión del usuario (TD-031).
+**Bloqueos / pendientes:** ninguno.
+
 ## 2026-11-13 — SPEC-013 (en curso): backend del panel de administración
 **Spec:** SPEC-013
 **Hecho:** T1–T9. ADR-0007 (autenticación de administrador) y contratos `/admin` en `ARCHITECTURE.md`. Migración 0007 (`admins`, `admin_sessions`, `devices.last_seen_at`, `products.initial_stock`). `stockService` con `initial_stock` (el reporte deja de depender de `SCENARIO_STOCK`). `adminAuthService` + `npm run admin:set`. Rutas `POST /admin/login`, `/admin/logout`, `GET /admin/sales`, `GET /admin/stock`.

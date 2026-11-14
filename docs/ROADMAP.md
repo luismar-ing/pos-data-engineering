@@ -25,7 +25,7 @@ Objetivo: vender sin red sin sobrevender.
 
 ## Fase 4 — Endurecimiento y demo  ⏳ en curso
 - SPEC-011 Corte de red con dos dispositivos y reintentos de sync ✅
-- SPEC-012 Rediseño visual "Señalética de feria" (🚧 en curso)
+- SPEC-012 Rediseño visual "Señalética de feria" ✅
 - Pruebas de corte de red con ≥ 2 dispositivos concurrentes.
 - Pruebas de reintento de sync (duplicados, lotes parciales).
 - Datos semilla y guion de demo.
