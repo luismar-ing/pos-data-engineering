@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Draft (sin preguntas abiertas; falta plan.md y tasks.md) |
+| Estado | Done |
 | Fase | 5 — Administración |
 | Repos | app, backend |
 | Depende de | SPEC-013, SPEC-004, SPEC-005, SPEC-007, SPEC-008 |
 | Creada | 2026-11-12 |
-| Actualizada | 2026-11-12 |
+| Actualizada | 2026-11-17 |
 
 ## 1. Contexto y problema
 SPEC-013 deja un panel de administración con login y vistas de solo lectura (ventas y stock). Quedan tres problemas que hoy se resuelven a mano en el servidor:
@@ -98,3 +98,7 @@ Ninguna. Respuestas del 2026-11-12 (venían de SPEC-013):
 |---|---|---|
 | 2026-11-12 | Creación (Draft), separada de SPEC-013 | Respuesta P6: dividir el panel en dos specs |
 | 2026-11-12 | P3 corregida: tope sin red de 30 min (RF-4) | El código de SPEC-005 no deja de vender préstamos vencidos sin red |
+| 2026-11-17 | Approved (spec); ADR-0008 y plan.md propuestos | Aprobada por el usuario |
+| 2026-11-17 | ADR-0008 aceptado y plan.md aprobado | Aprobados por el usuario |
+| 2026-11-17 | tasks.md aprobado → In Progress (T1) | Usuario |
+| 2026-11-17 | Done (T1–T17) | CA-1 a CA-12 y CA-3b verificados (pruebas automáticas y emulador) |

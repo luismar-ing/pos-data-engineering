@@ -109,7 +109,8 @@ Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin re
 2. **Cerrar:** en una transacción local, los préstamos activos vencidos (3 min), con menos del 20 % o sin sesión abierta pasan a `closing` con `quota_reported = quota_used`; desde ese momento no venden. `POST /prestamos/close` con todos los `closing`, también los de intentos fallidos y con el mismo valor ⇒ `released`. El servidor devuelve `quota_total - quota_used` a `central_stock`.
 3. **Pedir** (solo con sesión abierta): `POST /prestamos/request` con los productos activos sin préstamo, en grupos de 200. El servidor bloquea cada producto (`for update`, en orden de id), calcula la cuota y la **congela**: resta de `central_stock` e inserta el préstamo en la misma transacción.
 4. **Cuota** = `ceil(unidades / minutos × 3 × 1.2)`, mínimo 5, tope `central_stock`. Unidades y minutos salen de los préstamos que ese dispositivo cerró en los últimos 5 min (hora del servidor).
-5. El servidor **nunca** devuelve stock sin un `close`: la cuota de un teléfono sin red queda congelada para él. Al sincronizar ventas (SPEC-008) no se vuelve a descontar stock.
+5. El servidor solo devuelve stock con un `close`, salvo en un dispositivo dado de baja (SPEC-014, ADR-0008): sus préstamos activos se cierran como `expired` a `expires_at + 32 min`. Al sincronizar ventas (SPEC-008) no se vuelve a descontar stock.
+6. **Tope sin red (ADR-0008):** un préstamo `active` vende solo mientras `renew_at > ahora − 30 min`. `renew_at` = hora local de inicio de la petición + duración que dio el servidor, así el tope del teléfono cae antes que el del servidor.
 
 ### 3.5 Edge Analytics (SPEC-009)
 1. `getDashboard(now)` solo lee SQLite, con o sin red. Corre al enfocar Dashboard, cada 15 s mientras está visible y cuando cambia `leasesUpdatedAt` (tras cobrar y al cambiar préstamos); una consulta a la vez.
@@ -124,10 +125,24 @@ Igual que 3.1 pasos 1–2: el descuento de cuota es local, así que con o sin re
 4. `react-native-qrcode-svg` (sobre `react-native-svg`) dibuja el código en el teléfono, corrección L, fondo blanco y margen. El cliente lo lee con la cámara, sin red. Sin contratos HTTP.
 
 ### 3.7 Consistencia del stock y prueba con dos dispositivos (SPEC-011)
-1. El stock central solo cambia por los préstamos: pedir resta `quota_total`, cerrar devuelve `quota_total − quota_used`; el sync de ventas no lo toca. Por producto: **stock central + Σ `quota_total` (active) + Σ `quota_used` (released) = stock inicial**.
+1. El stock central solo cambia por los préstamos y por los ajustes del panel (SPEC-014, que mueven también `initial_stock`): pedir resta `quota_total`, cerrar devuelve `quota_total − quota_used`; el sync de ventas no lo toca. Por producto: **stock central + Σ `quota_total` (active) + Σ `quota_used` (released, expired) = stock inicial**.
 2. `npm run report:stock` (`src/services/stockService.ts` → `STOCK_REPORT_SQL`, `checkStock`; SPEC-013) imprime por producto stock inicial (`products.initial_stock`), central, prestado, informado, vendido por sync y el total; marca inconsistente si el total no da el stock inicial o si lo vendido por sync lo supera. `checkStock` devuelve códigos estables (`ok`, `no_cuadra`, `sync_supera_stock`, `sin_stock_inicial`) que `GET /admin/stock` reutiliza. Solo lee; termina con código 1 si algo no cuadra.
 3. `npm run scenario:reset` borra préstamos, ventas, eventos y sesiones y fija `SCENARIO_STOCK` ("Hot dog" en 10) como stock central e inicial. Solo corre si la base es `posde` o `posde_test` (`assertDevDatabase`). No borra `devices`.
 4. Procedimiento con un emulador y un teléfono: `docs/testing/dos-dispositivos.md`. Idempotencia de reintentos probada en `sync.test.ts` (lote cortado, envíos simultáneos) y `sync.test.mjs` (respuesta perdida, `markStatement`).
+
+### 3.8 Rol y panel de administración (SPEC-013)
+1. Al abrir, `App.tsx` lee `role` de `settings` (`roleRepository`) y la sesión de administrador de SecureStore (`adminSession`); una sesión vencida (`isSessionValid`) se borra. Sin rol, `RoleSelectScreen`; con `seller`, las 4 pestañas de siempre; con `admin`, login o panel. No se cambia de rol con una sesión de vendedor abierta (`canSwitchRole`).
+2. `AdminLoginScreen` llama a `POST /admin/login` (ADR-0007) y guarda `{ token, username, expires_at }` en SecureStore. Sin red el botón queda deshabilitado; los errores se muestran con un mensaje genérico.
+3. Pestañas Ventas (`GET /admin/sales` del día local), Stock (`GET /admin/stock`) y Cuenta (cerrar sesión con `POST /admin/logout`, cambiar de rol). Solo con red; no se guarda nada del panel en el teléfono. Cualquier 401 borra la sesión y vuelve al login.
+4. El panel no comparte nada con el flujo de venta: el vendedor cobra sin red igual que antes (CA-11: 241–365 ms por cobro con y sin el panel consultando el servidor).
+
+### 3.9 Acciones del panel: baja, conciliación y catálogo (SPEC-014)
+1. **Préstamo de cada venta:** `createSale` descuenta la cuota con `update … returning id` (solo préstamos `active` con `renew_at > capFrom(now)`) y guarda ese id en `sale_items.lease_id` y en el evento. El backend lo guarda sin FK; los eventos anteriores llegan sin él.
+2. **Baja:** `POST /admin/devices/:id/revoke` fija `devices.revoked_at`; `requestLeases` ya no le presta. `releaseRevokedLeases` (cada 60 s en `index.ts` y al abrir Teléfonos, Stock o Conciliación) cierra como `expired` sus préstamos activos a `expires_at + 32 min`: cuenta como vendido lo sincronizado y devuelve el resto. Un cierre del teléfono antes de ese plazo gana; uno después responde como cerrado y guarda `quota_reported` (ADR-0008).
+3. **Conciliación:** por préstamo cerrado, informado contra `Σ sale_items.quantity` de ese `lease_id`; `returned_extra` en los `expired`; las líneas sin `lease_id` van aparte.
+4. **Catálogo y stock:** alta, edición (nombre, categoría, precio, activo) y ajuste del central con la fila del producto bloqueada; el ajuste mueve también `initial_stock`, así el reporte de §3.7 sigue cuadrando.
+5. **Registro e idempotencia:** cada acción y su fila de `admin_audit` van en una transacción; el `request_id` lo genera la app y se conserva si la petición falla por red, así un reintento devuelve lo guardado sin aplicar dos veces.
+6. **App:** pestañas Ventas, Stock (toca un producto para editarlo; "Nuevo producto"), Teléfonos, Conciliar y Cuenta (registro de cambios). Las acciones piden confirmación y se deshabilitan sin red.
 
 ## 4. Modelo de datos
 
@@ -140,7 +155,7 @@ Versionado con `PRAGMA user_version`; `database.ts` aplica las migraciones pendi
 |---|---|
 | `products` | Copia local del catálogo (`unit_price_cents`); `active = 0` si ya no viene del servidor. No guarda stock: el stock vendible offline es la suma de leases activos |
 | `stock_leases` | Préstamos recibidos (v3): `quota_total`, `quota_used ≤ quota_total`, `quota_reported`, `status` `active`/`closing`/`released`, `issued_at` (servidor), `renew_at` (hora local); uno activo por producto; `id` lo emite el servidor |
-| `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2); índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)` para el panel (v5) |
+| `sales` / `sale_items` | Venta y sus líneas; `sales.session_id` (v2); índices `sales(created_at)`, `sales(session_id)`, `sale_items(sale_id)` para el panel (v5); `sale_items.lease_id` = préstamo del que salió la línea, nulo en ventas anteriores (v6, SPEC-014) |
 | `settings` | Clave/valor: `device_id`, `device_name`, `registered_at` (v2); `catalog_synced_at` (SPEC-004); `role` = `seller`/`admin` (SPEC-013; sin migración; una instalación anterior con sesión de vendedor abierta arranca como `seller`). El token de administrador va en SecureStore (`admin_session`), no aquí |
 | `sessions` | Sesiones de vendedor; índice único parcial ⇒ solo una con `closed_at is null` (v2) |
 | `event_log` | Bitácora append-only; `sale_created` lleva `{ sale, items }` y `session_opened`/`session_closed` llevan `{ session }` en `payload_json`; `sync_status`, `synced_at`, `sync_error` (v4) |
@@ -151,9 +166,10 @@ Se aplican con `npm run db:migrate` (ADR-0006): una transacción por archivo, re
 | Tabla | Propósito |
 |---|---|
 | `products` | Catálogo + `central_stock` (`unit_price_cents`); `initial_stock` para el reporte de stock (0007, SPEC-013) |
-| `devices` | Dispositivos registrados; `token_hash` = sha256 del secreto (índice único); `last_seen_at` = última petición autenticada (0007; lo marca `requireDevice`) |
-| `sales` / `sale_items` | Ventas recibidas; PK `sales.id` ⇒ idempotencia; FK `sales.device_id → devices`; `session_id` |
-| `stock_leases` | Préstamos emitidos: FK a `devices`, `status` `active`/`released`, `closed_at`; uno activo por dispositivo y producto (0005) |
+| `devices` | Dispositivos registrados; `token_hash` = sha256 del secreto (índice único); `last_seen_at` = última petición autenticada (0007; lo marca `requireDevice`); `revoked_at` = dado de baja (0008) |
+| `sales` / `sale_items` | Ventas recibidas; PK `sales.id` ⇒ idempotencia; FK `sales.device_id → devices`; `session_id`; `sale_items.lease_id` sin FK, nulo en eventos anteriores (0008) |
+| `stock_leases` | Préstamos emitidos: FK a `devices`, `status` `active`/`released`/`expired` (cerrado por el servidor tras una baja, 0008), `closed_at`; `quota_reported` = lo que informó el teléfono al cerrar tarde un `expired` (0008); uno activo por dispositivo y producto (0005) |
+| `admin_audit` | Registro de cambios del panel: `request_id` (PK, lo genera la app ⇒ idempotencia), `admin_id`, `action`, `entity_id`, `before`/`after` (`jsonb`), `created_at` (0008) |
 | `sync_events` | Un registro por evento recibido (`event_id` PK, `device_id`, `event_type`, `batch_id`, `received_at`): idempotencia de todos los tipos (0006) |
 | `sessions` | Sesiones de vendedor recibidas: `seller_name`, `opened_at`, `closed_at` (cualquiera puede llegar primero) (0006) |
 | `admins` | Cuentas de administrador: `username` único (`^[a-z0-9._-]{3,40}$`), `password_hash` (`scrypt$N$r$p$sal$hash`, ADR-0007), `failed_attempts`, `locked_until` (0007) |
@@ -175,8 +191,37 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 | `POST /admin/logout` 🔑 | — | 204: borra esa sesión | 401 | ✅ implementado (SPEC-013) |
 | `GET /admin/sales?from=ISO&to=ISO` 🔑 | — | resumen de ventas (ver abajo) | 400 `VALIDATION_ERROR` (falta `from`/`to`, `from > to` o rango > 31 días), 401 | ✅ implementado (SPEC-013) |
 | `GET /admin/stock` 🔑 | — | stock por producto (ver abajo) | 401 | ✅ implementado (SPEC-013) |
+| `GET /admin/devices` 🔑 | — | dispositivos con estado y préstamos (ver abajo) | 401 | ✅ implementado (SPEC-014) |
+| `POST /admin/devices/:id/revoke` 🔑 | `{ request_id: uuid }` | `{ device }`: fija `revoked_at` | 400 `VALIDATION_ERROR`, 404 `DEVICE_NOT_FOUND`, 401 | ✅ implementado (SPEC-014) |
+| `POST /admin/devices/:id/reactivate` 🔑 | `{ request_id: uuid }` | `{ device }`: `revoked_at = null` | 400 `VALIDATION_ERROR`, 404 `DEVICE_NOT_FOUND`, 401 | ✅ implementado (SPEC-014) |
+| `GET /admin/reconciliation?from=ISO&to=ISO` 🔑 | — | conciliación por préstamo (ver abajo) | 400 `VALIDATION_ERROR` (como `/admin/sales`), 401 | ✅ implementado (SPEC-014) |
+| `POST /admin/products` 🔑 | `{ request_id, name: 1–100, category?: 1–50, unit_price_cents: int ≥ 0, initial_stock: int ≥ 0 }` | 201 `{ product }` | 400 `VALIDATION_ERROR`, 401 | ✅ implementado (SPEC-014) |
+| `PATCH /admin/products/:id` 🔑 | `{ request_id, name?, category?: string\|null, unit_price_cents?, active? }` (al menos uno) | `{ product }` | 400 `VALIDATION_ERROR`, 404 `PRODUCT_NOT_FOUND`, 401 | ✅ implementado (SPEC-014) |
+| `POST /admin/products/:id/stock` 🔑 | `{ request_id, delta: int ≠ 0 }` | `{ product }`: `central_stock` e `initial_stock` += `delta` | 400 `VALIDATION_ERROR`, 404 `PRODUCT_NOT_FOUND`, 409 `STOCK_BELOW_ZERO`, 401 | ✅ implementado (SPEC-014) |
+| `GET /admin/audit?limit=1–200&before=ISO` 🔑 | — | `{ entries: [{ request_id, username, action, entity_id, before, after, created_at }] }`, la más reciente primero (50 por defecto) | 400 `VALIDATION_ERROR`, 401 | ✅ implementado (SPEC-014) |
 
-`Lease = { id, product_id, quota_total, quota_used, issued_at, expires_at }` — `expires_at` (3 min) solo indica cuándo renovar: el servidor nunca devuelve stock sin un `close`. Renovar = `close` + `request`. En ambas rutas, si un elemento falla, la petición entera hace rollback.
+`Lease = { id, product_id, quota_total, quota_used, issued_at, expires_at }` — `expires_at` (3 min) indica cuándo renovar. Renovar = `close` + `request`. En ambas rutas, si un elemento falla, la petición entera hace rollback. Con un dispositivo dado de baja (SPEC-014), `request` devuelve todos los productos en `unavailable`; `close` de un préstamo que el servidor ya cerró como `expired` responde como cerrado, sin mover stock, y guarda lo informado en `quota_reported` (la primera vez).
+
+`product` (rutas `/admin/products`) = `{ id, name, category, unit_price_cents, active, central_stock, initial_stock }`. Las rutas 🔑 que cambian algo reciben `request_id`; repetirlo devuelve la misma respuesta sin aplicar nada (también si el cuerpo cambió) y queda en `GET /admin/audit`.
+
+`GET /admin/devices` — response:
+```json
+{ "generated_at": "ISO",
+  "devices": [ { "id", "name", "revoked_at": "ISO|null", "last_seen_at": "ISO|null", "last_sync_at": "ISO|null",
+                 "open_session": { "seller_name", "opened_at" } | null,
+                 "leases": [ { "id", "product_id", "product_name", "quota_total", "quota_used", "expires_at",
+                               "release_at": "ISO|null (expires_at + 32 min si el dispositivo está dado de baja)" } ] } ] }
+```
+
+`GET /admin/reconciliation` — préstamos cerrados en `[from, to)` por `closed_at`:
+```json
+{ "generated_at": "ISO", "from": "ISO", "to": "ISO",
+  "leases": [ { "lease_id", "device_id", "device_name", "product_id", "product_name", "status": "released" | "expired",
+                "closed_at", "reported": "int|null", "synced", "result": "cuadra" | "faltan_ventas" | "sobran_ventas",
+                "returned_extra": "int (solo expired: synced − quota_used al cierre, mínimo 0)" } ],
+  "unassigned": [ { "device_id", "device_name", "product_id", "product_name", "units" } ] }
+```
+`reported` = `quota_used` en `released`; en `expired`, `quota_reported` (nulo si el teléfono no cerró) o, si es nulo, `quota_used` al cierre. Los que no cuadran van primero. `unassigned` = líneas sin `lease_id` de ventas con `sales.created_at` en el rango.
 
 `POST /sync/events` — request:
 ```json
@@ -187,7 +232,7 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 ```
 | `event_type` | `payload` |
 |---|---|
-| `sale_created` | `{ sale: { id = event_id, device_id, session_id?, total_cents = Σ líneas, payment_method, created_at }, items: [ { id, sale_id = event_id, product_id, quantity > 0, unit_price_cents ≥ 0 } ] }` |
+| `sale_created` | `{ sale: { id = event_id, device_id, session_id?, total_cents = Σ líneas, payment_method, created_at }, items: [ { id, sale_id = event_id, product_id, quantity > 0, unit_price_cents ≥ 0, lease_id?: uuid\|null } ] }` (`lease_id` desde SPEC-014; los eventos anteriores no lo traen) |
 | `session_opened` | `{ session: { id, device_id, seller_name, opened_at, closed_at: null } }` |
 | `session_closed` | `{ session: { id, device_id, seller_name, opened_at, closed_at } }` |
 
@@ -214,7 +259,7 @@ Base URL: `http://<host>:<PORT>`. JSON en ambos sentidos.
 `GET /admin/stock` — response:
 ```json
 { "generated_at": "ISO",
-  "products": [ { "product_id", "name", "initial_stock": "int|null", "central_stock", "leased_active", "reported_sold",
+  "products": [ { "product_id", "name", "category", "unit_price_cents", "active", "initial_stock": "int|null", "central_stock", "leased_active", "reported_sold",
                   "synced_sold", "balance", "status": "ok" | "no_cuadra" | "sync_supera_stock" | "sin_stock_inicial" } ] }
 ```
 Mismo cálculo que `npm run report:stock` (§3.7): `balance` = central + prestado + informado; `ok` si es igual a `initial_stock` y `synced_sold` no lo supera.
@@ -235,6 +280,9 @@ Errores (todas las rutas, ADR-0006):
 | `DEVICE_CONFLICT` | 409 | Registro con un `device_id` ya usado con otro secreto |
 | `NOT_FOUND` | 404 | Ruta inexistente |
 | `LEASE_NOT_FOUND` | 404 | El préstamo no existe o es de otro dispositivo |
+| `DEVICE_NOT_FOUND` | 404 | `/admin/devices/:id/*` con un dispositivo inexistente |
+| `PRODUCT_NOT_FOUND` | 404 | `/admin/products/:id*` con un producto inexistente |
+| `STOCK_BELOW_ZERO` | 409 | Ajuste que dejaría `central_stock` por debajo de 0 |
 | `INVALID_QUOTA_USED` | 400 | `quota_used` mayor que `quota_total`, menor que lo ya informado, o distinto de lo informado si el préstamo ya estaba cerrado |
 | `DB_UNAVAILABLE` | 503 | `/health` sin BD |
 | `INTERNAL_ERROR` | 500 | Cualquier otro error; sin SQL ni trazas en la respuesta |

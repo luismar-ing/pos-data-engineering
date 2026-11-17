@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | In Progress |
+| Estado | Done |
 | Fase | 5 — Administración |
 | Repos | app, backend |
 | Depende de | SPEC-002, SPEC-003, SPEC-008, SPEC-011, SPEC-012 |
 | Creada | 2026-11-12 |
-| Actualizada | 2026-11-12 |
+| Actualizada | 2026-11-17 |
 
 ## 1. Contexto y problema
 `PRODUCT.md` nombra al **supervisor / dueño** como usuario ("ver ventas consolidadas y no tener sobreventas"), pero hoy no tiene ninguna pantalla:
@@ -101,3 +101,4 @@ P3, P4 y P5 pasaron a SPEC-014.
 | 2026-11-12 | Respuestas P1, P2, P6, P7; dispositivos, conciliación y catálogo pasan a SPEC-014 | Revisión con el usuario |
 | 2026-11-12 | Approved (spec, plan y tareas) | Aprobada por el usuario |
 | 2026-11-12 | In Progress (T1: ADR-0007) | Inicio de la implementación |
+| 2026-11-17 | Done (T15 en un emulador, T16) | Criterios CA-1 a CA-11 verificados; CA-11 sin segundo teléfono (TD-034), por decisión del usuario |

@@ -12,6 +12,20 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-17 — SPEC-014: baja de teléfonos, conciliación y catálogo en el panel
+**Spec:** SPEC-014
+**Hecho:** Spec, ADR-0008, plan y tareas aprobados; T1–T17. Backend: migración 0008 (`devices.revoked_at`, `stock_leases.quota_reported`, `sale_items.lease_id` sin FK, `admin_audit`); `releaseRevokedLeases` (cada 60 s y al abrir vistas del panel) y cierre tardío en `closeLeases`; `adminDevicesService`, `adminReconciliationService`, `adminCatalogService`, `adminAuditService` (`withAudit` con `request_id`); `lease_id` opcional en la sync; `stockService` suma los `expired`. App: migración v6, tope sin red en `AVAILABLE_SQL`, `CONSUME_QUOTA_SQL` (`returning id`) y Dashboard; `renew_at` desde el inicio de la petición; pestañas Teléfonos y Conciliar, `ProductFormSheet` en Stock, registro de cambios en Cuenta.
+**Verificación:** backend `npm test` 95/95, app 70/70, `tsc` ok en los dos. Rendimiento (RNF-6, volumen de SPEC-013): `/admin/devices` 31–35 ms, `/admin/reconciliation` 39–48 ms. En el emulador `pos_pixel`: CA-6 (venta con `lease_id` en Postgres, cobro en 89 ms); CA-3b (modo avión y reloj adelantado 40 min: todo "Agotado" y tocarlo no lo agrega; con reloj y red de vuelta, vende); baja y reactivación con confirmación (CA-1, CA-5 en pantalla y en BD); CA-9 (precio 15 → 16: el teléfono cobra 16 tras actualizar el catálogo y las ventas anteriores quedan en 15); CA-10 (−500 rechazado: "quedaría en −297"); +20 y −20 con `report:stock` en `ok`; CA-12 en Cuenta. Los datos de `posde` quedaron como estaban (precio, stock, dispositivo activo) y se borró el admin de prueba.
+**Decisiones:** ADR-0008 reemplaza SPEC-005 P3. `/admin/stock` devuelve también categoría, precio y activo para editar desde Stock. El `request_id` de una acción que falló por red se reutiliza en el reintento. Pestaña "Conciliar" (la etiqueta "Conciliación" se cortaba con 5 pestañas).
+**Bloqueos / pendientes:** TD-035 (préstamos con ventas anteriores al cambio salen como "faltan ventas" durante la transición). Siguiente tema por decidir.
+
+## 2026-11-17 — SPEC-013: cierre del panel de administración
+**Spec:** SPEC-013
+**Hecho:** T15 y T16. Flujo 3.8 en `ARCHITECTURE.md`; TD-032 (HTTP sin cifrar), TD-033 (bloqueo solo por usuario) y TD-034 (CA-11 sin segundo teléfono).
+**Verificación:** backend `npm test` 77/77, app 65/65, `tsc` ok en los dos. T15 en el emulador `pos_pixel` (sin iPhone, por decisión del usuario): CA-7: sesión de administrador vencida a mano en `admin_sessions` y "Actualizar" en Ventas vuelve al login. CA-11: en modo avión, 3 cobros sin carga en 241–270 ms y 3 cobros mientras un script en la PC pedía `/admin/sales` y `/admin/stock` sin pausa (400 pedidos en 40 s, todos 200, media 14 ms, máximo 52 ms) en 258–365 ms; misma pantalla y mismo QR. Al volver la red llegaron las 9 ventas ($315.00) y `report:stock` y `GET /admin/stock` marcan `ok` en los 5 productos.
+**Decisiones:** el "otro teléfono" de CA-11 se simuló con llamadas a la API desde la PC: con el vendedor sin red, el servidor no interviene en el cobro. La variación de tiempos viene de que el emulador comparte CPU con el backend en la misma PC.
+**Bloqueos / pendientes:** SPEC-014: ADR-0008 y `plan.md` por aprobar.
+
 ## 2026-11-13 — SPEC-012: cierre del rediseño visual
 **Spec:** SPEC-012
 **Hecho:** T13. La app con la Propuesta A "Señalética de feria" (fuentes Barlow, `theme.ts`, componentes en `shared/ui`, Venta en cuadrícula con categorías y buscador, hoja de cobro, Inventario, Dashboard y Ajustes) quedó en `c27be0e`; esta entrada cierra la spec.

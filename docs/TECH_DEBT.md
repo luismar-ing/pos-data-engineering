@@ -6,11 +6,13 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Sev. | Repo | Ubicación | Problema | Se resuelve en |
 |---|---|---|---|---|---|
+| TD-035 | ⚪ | backend | `services/adminReconciliationService.ts` | Los préstamos cerrados con ventas anteriores a SPEC-014 (sin `lease_id`) salen como "faltan ventas" aunque esas ventas existan: aparecen aparte en "sin préstamo asignado". Solo afecta a la transición | Si molesta: marcar como "sin datos" un préstamo cuyo dispositivo tiene líneas sin préstamo del mismo producto entre `issued_at` y `closed_at` |
+| TD-032 | 🟡 | backend | `src/index.ts` | El panel de administración viaja por HTTP sin cifrar: usuario, contraseña y token de 8 h se pueden leer en la red del evento (SPEC-013) | Antes de usarlo fuera de la red local: HTTPS (proxy con TLS) |
+| TD-033 | ⚪ | backend | `services/adminAuthService.ts` | El bloqueo tras 5 fallos es solo por usuario: alguien puede bloquear la cuenta a propósito y probar contraseñas contra varios usuarios sin límite por IP (SPEC-013, ADR-0007) | Si hay más de un administrador o el servidor sale de la red local |
+| TD-034 | ⚪ | app | — | SPEC-013 CA-11 se probó con un solo emulador sin red mientras un script en la PC consultaba `/admin/sales` y `/admin/stock` (400 pedidos en 40 s); no con un segundo teléfono usando el panel | Próxima prueba con el iPhone |
 | TD-031 | ⚪ | app | — | SPEC-012 CA-12 (cobro sin red < 100 ms) se midió en el emulador (76–104 ms), no en un teléfono físico | Próxima prueba con el iPhone |
 | TD-030 | ⚪ | app | `App.tsx` (arranque), `features/leases/data/leaseSync.ts` | Al abrir la app, el primer ciclo de préstamos puede chocar con la descarga del catálogo: "Préstamos pendientes: database is locked" (visto en el emulador el 2026-11-13). El siguiente ciclo (30 s) funciona; no se pierde nada | Si el primer préstamo tarda en llegar al abrir |
-| TD-028 | 🟡 | backend | — | No se concilia lo que cada teléfono informó al cerrar préstamos con las ventas que llegan por sync (SPEC-008 P6): las líneas de venta no dicen de qué préstamo salieron | SPEC-014 (RF-8 a RF-12) |
 | TD-029 | ⚪ | app | `core/sync/syncBatch.ts` | Un evento de más de 80 kB (venta con cientos de líneas) va solo en su lote y podría pasar del límite de 100 kB del servidor (413): frenaría la cola en ese evento | Si aparecen ventas tan grandes |
-| TD-025 | 🟡 | backend | `services/leaseService.ts` | La cuota de un teléfono perdido o desinstalado queda congelada para siempre: el servidor solo devuelve stock con `close` (SPEC-005 RF-15). Falta una forma de liberarla a mano | SPEC-014 (RF-2 a RF-5) |
 | TD-026 | ⚪ | app | `features/leases/data/leaseSync.ts` | Cada ciclo (30 s) vuelve a pedir préstamo de todos los productos sin stock; con catálogos grandes son varias peticiones inútiles | Cuando el catálogo crezca |
 | TD-013 | 🟡 | app | — | La app solo prueba migraciones (`npm test`, `node:sqlite`); faltan pruebas de repositorios y UI | cada spec de app |
 | TD-024 | ⚪ | app | `package.json` | `expo-doctor` 19/20: salieron `expo` 58.0.23, `expo-sqlite` 58.0.15 y `react-native-safe-area-context` 5.11.1 (instalados 58.0.21 / 58.0.14 / 5.10.1) | `npx expo install --check` cuando se decida |
@@ -24,6 +26,8 @@ Severidad: 🔴 bloqueante · 🟠 alta · 🟡 media · ⚪ baja. Al resolver u
 
 | ID | Problema | Resuelto en | Fecha |
 |---|---|---|---|
+| TD-025 | La cuota de un teléfono perdido quedaba congelada para siempre | SPEC-014 (baja de dispositivo y devolución a `expires_at` + 32 min, ADR-0008) | 2026-11-17 |
+| TD-028 | Sin conciliación entre lo informado al cerrar préstamos y las ventas sincronizadas | SPEC-014 (`sale_items.lease_id` y `GET /admin/reconciliation`) | 2026-11-17 |
 | TD-001 | `create table if not exist` en el esquema SQLite | SPEC-001 (migración v1) | 2026-10-30 |
 | TD-002 | Coma faltante en `sales` | SPEC-001 | 2026-10-30 |
 | TD-003 | Coma faltante en `event_log` | SPEC-001 | 2026-10-30 |
