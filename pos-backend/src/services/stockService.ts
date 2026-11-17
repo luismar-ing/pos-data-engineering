@@ -1,11 +1,11 @@
 // Consistencia del stock (SPEC-011 RF-4, RF-5): lo usan `report:stock` y GET /admin/stock (SPEC-013 RF-13, RF-14).
 import type { Pool } from 'pg';
 
-/** Por producto: stock inicial, central, cuota activa, vendido informado al cerrar y unidades por sync. Solo lectura. */
+/** Por producto: stock inicial, central, cuota activa, vendido al cerrar (informado o, en `expired`, lo sincronizado al cierre; SPEC-014) y unidades por sync. Solo lectura. */
 export const STOCK_REPORT_SQL = `
-    select p.id, p.name, p.initial_stock, p.central_stock,
+    select p.id, p.name, p.category, p.unit_price_cents, p.active, p.initial_stock, p.central_stock,
            coalesce(sum(l.quota_total) filter (where l.status = 'active'), 0)::int as leased_active,
-           coalesce(sum(l.quota_used) filter (where l.status = 'released'), 0)::int as reported_sold,
+           coalesce(sum(l.quota_used) filter (where l.status in ('released', 'expired')), 0)::int as reported_sold,
            (select coalesce(sum(si.quantity), 0) from sale_items si where si.product_id = p.id)::int as synced_sold
     from products p
     left join stock_leases l on l.product_id = p.id
@@ -16,6 +16,10 @@ export const STOCK_REPORT_SQL = `
 export interface StockRow {
     id: string;
     name: string;
+    /** Para editar el producto desde el panel (SPEC-014). */
+    category: string | null;
+    unit_price_cents: number;
+    active: boolean;
     initial_stock: number | null;
     central_stock: number;
     leased_active: number;

@@ -14,6 +14,18 @@ test('migrate dos veces: la segunda no aplica nada (RF-3)', async () => {
     assert.deepEqual(await migrate(pool), []);
 });
 
+test('0008: columnas e índices de SPEC-014 y admin_audit con request_id único', async () => {
+    await migrate(pool);
+    const { rows: cols } = await pool.query<{ col: string }>(
+        `select table_name || '.' || column_name as col from information_schema.columns
+         where (table_name, column_name) in (('devices', 'revoked_at'), ('stock_leases', 'quota_reported'), ('sale_items', 'lease_id'))
+         order by 1`
+    );
+    assert.deepEqual(cols.map((c) => c.col), ['devices.revoked_at', 'sale_items.lease_id', 'stock_leases.quota_reported']);
+    const { rows: [audit] } = await pool.query(`select to_regclass('public.admin_audit') as tbl`);
+    assert.equal(audit.tbl, 'admin_audit');
+});
+
 test('migración con SQL roto: lanza error y no deja nada aplicado (CA-4)', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'posde-migr-'));
     try {
@@ -55,7 +67,7 @@ test('0007 sobre una base con préstamos: initial_stock deja todo cuadrando (SPE
                 ('d1', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 5, 3, 'released', now())`
         );
 
-        assert.deepEqual(await migrate(pool), ['0007_admin.sql']);
+        assert.equal((await migrate(pool))[0], '0007_admin.sql');
         const { rows } = await pool.query<{ name: string; initial_stock: number }>(
             'select name, initial_stock from products order by name'
         );

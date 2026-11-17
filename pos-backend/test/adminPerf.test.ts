@@ -1,4 +1,4 @@
-// SPEC-013 T9 / RNF-6: cada vista del panel en < 2 s con 10 dispositivos, 2 000 productos y 10 000 ventas.
+// SPEC-013 T9 y SPEC-014 T10 / RNF-6: cada vista del panel en < 2 s con 10 dispositivos, 2 000 productos y 10 000 ventas.
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { setAdmin } from '../src/services/adminAuthService.js';
@@ -51,6 +51,9 @@ before(async () => {
         join numbered p on p.rn between d * 200 + 1 and d * 200 + 200
         cross join (values ('active'), ('released')) s(status);
 
+        -- SPEC-014: cada línea apunta al préstamo cerrado de su producto (uno por producto).
+        update sale_items si set lease_id = l.id from stock_leases l where l.product_id = si.product_id and l.status = 'released';
+
         analyze;
     `);
     await setAdmin(pool, 'admin', 'clave-segura-1');
@@ -79,5 +82,20 @@ test('GET /admin/stock en < 2 s (RNF-6)', async () => {
     const { ms, body } = await timed('/admin/stock');
     console.log(`perf: /admin/stock ${ms.toFixed(0)} ms`);
     assert.ok(body.products.length >= 2_000);
+    assert.ok(ms < LIMIT_MS, `${ms.toFixed(0)} ms`);
+});
+
+test('GET /admin/devices en < 2 s (SPEC-014 RNF-6)', async () => {
+    const { ms, body } = await timed('/admin/devices');
+    console.log(`perf: /admin/devices ${ms.toFixed(0)} ms`);
+    assert.equal(body.devices.filter((d: { id: string }) => d.id.startsWith('perf-')).length, 10);
+    assert.ok(ms < LIMIT_MS, `${ms.toFixed(0)} ms`);
+});
+
+test('GET /admin/reconciliation en < 2 s (SPEC-014 RNF-6)', async () => {
+    const now = Date.now();
+    const { ms, body } = await timed(`/admin/reconciliation?from=${new Date(now - 3_600_000).toISOString()}&to=${new Date(now + 3_600_000).toISOString()}`);
+    console.log(`perf: /admin/reconciliation ${ms.toFixed(0)} ms`);
+    assert.equal(body.leases.length, 2_000);
     assert.ok(ms < LIMIT_MS, `${ms.toFixed(0)} ms`);
 });

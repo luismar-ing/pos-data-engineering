@@ -50,7 +50,7 @@ test('assertDevDatabase: solo posde y posde_test (CA-9, RNF-3)', () => {
 
 test('checkStock: ok, total que no cuadra, sync de más y producto sin stock inicial (CA-8)', () => {
     const row = (id: string, initial: number | null, central: number, active: number, reported: number, synced: number): StockRow => ({
-        id, name: id, initial_stock: initial, central_stock: central, leased_active: active, reported_sold: reported, synced_sold: synced,
+        id, name: id, category: null, unit_price_cents: 100, active: true, initial_stock: initial, central_stock: central, leased_active: active, reported_sold: reported, synced_sold: synced,
     });
     const result = checkStock([row('a', 10, 0, 5, 5, 5), row('b', 10, 1, 5, 5, 5), row('c', 10, 0, 5, 5, 11), row('d', null, 3, 0, 0, 0)]);
     assert.deepEqual(result.map((r) => r.status), ['ok', 'no_cuadra', 'sync_supera_stock', 'sin_stock_inicial']);

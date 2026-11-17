@@ -68,6 +68,22 @@ test('escenario de SPEC-011: coincide con report:stock y todo cuadra (CA-10)', a
     assert.equal(hotDog.balance, 10);
 });
 
+test('préstamo cerrado como expired con 3 sincronizadas: cuenta como informado y cuadra (SPEC-014 T3)', async () => {
+    const device = await registerDevice(server.url);
+    const l = await lease(device);
+    await sell(device, 3);
+    // Lo que hará releaseRevokedLeases: cierra con lo sincronizado y devuelve el resto.
+    const { rows: [row] } = await pool.query<{ quota_total: number }>(
+        `update stock_leases set status = 'expired', quota_used = 3, closed_at = now() where id = $1 returning quota_total`,
+        [l.id]
+    );
+    await pool.query('update products set central_stock = central_stock + $2 where id = $1', [HOT_DOG, row!.quota_total - 3]);
+
+    const hotDog = (await stock()).products.find((p) => p.product_id === HOT_DOG)!;
+    assert.equal(hotDog.reported_sold, 3);
+    assert.equal(hotDog.status, 'ok');
+});
+
 test('un producto que no cuadra sale como no_cuadra y los demás siguen en ok (RF-14)', async () => {
     await pool.query('update products set central_stock = central_stock + 1 where id = $1', [HOT_DOG]);
     const { products } = await stock();
