@@ -19,7 +19,7 @@ Complemento: **recibos QR offline** con el recibo completo comprimido en el cód
 | Rol | Necesidad |
 |---|---|
 | Vendedor | Cobrar rápido, con o sin red, sin preocuparse por el stock |
-| Supervisor / dueño | Ver ventas consolidadas y no tener sobreventas |
+| Administrador (supervisor / dueño) | Ver ventas consolidadas y stock, liberar cuotas, conciliar préstamos y administrar el catálogo, con login (SPEC-013, SPEC-014) |
 | Cliente final | Recibir un comprobante aunque no haya red |
 
 ## Escenarios de uso
@@ -38,11 +38,15 @@ Complemento: **recibos QR offline** con el recibo completo comprimido en el cód
 - Panel local: Burn Rate, Runout Time, top productos.
 - Recibo QR offline.
 
+### Después del MVP
+- Selección de rol al abrir la app: **Vendedor** sin login, **Administrador** con usuario y contraseña.
+- Panel de administración en la app (requiere red): ventas consolidadas, stock y si cuadra, dispositivos y liberación de cuota, conciliación de préstamos, catálogo (SPEC-013 y SPEC-014).
+
 ### Fuera (por ahora)
 - Pagos con tarjeta integrados (solo se registra el método de pago).
 - Facturación fiscal.
 - Multi-tienda / multi-tenant.
-- Panel web de administración (se evaluará después del MVP).
+- Panel web de administración (el panel vive en la app, SPEC-013).
 
 ## Métricas de éxito
 

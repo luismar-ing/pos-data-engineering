@@ -116,4 +116,9 @@ export const MIGRATIONS: string[] = [
   create index idx_sales_session on sales(session_id);
   create index idx_sale_items_sale on sale_items(sale_id);
   `,
+
+  // v6 — SPEC-014 RF-8: préstamo del que salió cada línea. Nulo en las ventas anteriores.
+  `
+  alter table sale_items add column lease_id text;
+  `,
 ];

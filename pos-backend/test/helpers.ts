@@ -8,7 +8,7 @@ export { pool };
 
 export async function resetDb(): Promise<void> {
     await migrate(pool);
-    await pool.query('truncate sync_events, sessions, sale_items, sales, stock_leases, products, devices cascade');
+    await pool.query('truncate admin_sessions, admins, sync_events, sessions, sale_items, sales, stock_leases, products, devices cascade');
     await seed(pool);
 }
 
@@ -28,6 +28,10 @@ export function postJson(url: string, body: unknown, secret?: string): Promise<R
         headers: { 'content-type': 'application/json', ...(secret ? { authorization: `Bearer ${secret}` } : {}) },
         body: typeof body === 'string' ? body : JSON.stringify(body),
     });
+}
+
+export function getJson(url: string, secret?: string): Promise<Response> {
+    return fetch(url, { headers: secret ? { authorization: `Bearer ${secret}` } : {} });
 }
 
 /** Registra un dispositivo nuevo por la API y devuelve su id y secreto. */

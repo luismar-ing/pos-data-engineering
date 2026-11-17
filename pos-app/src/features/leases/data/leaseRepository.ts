@@ -1,5 +1,5 @@
 import { getDatabase } from '../../../core/db/database';
-import { isLeaseDue, renewAt, type DueCheck } from '../domain/leasePolicy';
+import { capFrom, isLeaseDue, renewAt, type DueCheck } from '../domain/leasePolicy';
 import {
   ACTIVE_LEASES_SQL,
   AVAILABLE_SQL,
@@ -21,10 +21,10 @@ export interface ServerLease {
   expires_at: string;
 }
 
-/** Unidades disponibles por producto; un producto sin entrada está agotado (RF-8). */
-export async function getAvailableQuota(): Promise<Map<string, number>> {
+/** Unidades disponibles por producto; un producto sin entrada está agotado (RF-8), también tras el tope sin red. */
+export async function getAvailableQuota(nowMs = Date.now()): Promise<Map<string, number>> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<{ product_id: string; available: number }>(AVAILABLE_SQL);
+  const rows = await db.getAllAsync<{ product_id: string; available: number }>(AVAILABLE_SQL, [capFrom(nowMs)]);
   return new Map(rows.map((row) => [row.product_id, row.available]));
 }
 
@@ -63,7 +63,7 @@ export async function productsWithoutLease(): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
-export async function saveLeases(leases: ServerLease[], receivedAtMs: number): Promise<void> {
+export async function saveLeases(leases: ServerLease[], requestedAtMs: number): Promise<void> {
   const db = await getDatabase();
   await db.withExclusiveTransactionAsync(async (txn) => {
     for (const lease of leases) {
@@ -73,7 +73,7 @@ export async function saveLeases(leases: ServerLease[], receivedAtMs: number): P
         lease.quota_total,
         lease.quota_used,
         lease.issued_at,
-        renewAt(lease.issued_at, lease.expires_at, receivedAtMs),
+        renewAt(lease.issued_at, lease.expires_at, requestedAtMs),
       ]);
     }
   });

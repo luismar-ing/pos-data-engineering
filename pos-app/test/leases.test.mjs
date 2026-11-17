@@ -12,7 +12,7 @@ import {
   PRODUCTS_WITHOUT_LEASE_SQL,
   SAVE_LEASE_SQL,
 } from '../src/features/leases/data/leaseSql.ts';
-import { chunk, isLeaseDue, renewAt } from '../src/features/leases/domain/leasePolicy.ts';
+import { capFrom, chunk, isLeaseDue, OFFLINE_CAP_MINUTES, renewAt } from '../src/features/leases/domain/leasePolicy.ts';
 
 function open() {
   const db = new DatabaseSync(':memory:');
@@ -24,8 +24,10 @@ function open() {
 
 const save = (db, id, productId, total, used = 0) =>
   db.prepare(SAVE_LEASE_SQL).run(id, productId, total, used, '2026-11-03T12:00:00Z', '2026-11-03T12:03:00Z');
-const available = (db) => Object.fromEntries(db.prepare(AVAILABLE_SQL).all().map((r) => [r.product_id, r.available]));
-const consume = (db, productId, qty) => db.prepare(CONSUME_QUOTA_SQL).run(qty, productId, qty).changes;
+// Sin tope por defecto: las fijas son de 2026-11-03; las pruebas del tope pasan su propio `cap`.
+const OPEN_CAP = '2000-01-01T00:00:00.000Z';
+const available = (db, cap = OPEN_CAP) => Object.fromEntries(db.prepare(AVAILABLE_SQL).all(cap).map((r) => [r.product_id, r.available]));
+const consume = (db, productId, qty, cap = OPEN_CAP) => (db.prepare(CONSUME_QUOTA_SQL).get(qty, productId, qty, cap) ? 1 : 0);
 
 test('cobrar descuenta cuota y nunca pasa del total (RF-7, CA-3, CA-4)', () => {
   const db = open();
@@ -91,4 +93,27 @@ test('chunk parte en grupos de 200', () => {
   const ids = Array.from({ length: 450 }, (_, i) => i);
   assert.deepEqual(chunk(ids).map((part) => part.length), [200, 200, 50]);
   assert.deepEqual(chunk([]), []);
+});
+
+// SPEC-014 RF-4 (ADR-0008): tope sin red.
+test('tope sin red: 31 min después de renew_at no vende ni descuenta; 29 min después, sí (CA-3b)', () => {
+  const renew = Date.parse('2026-11-03T12:03:00.000Z');
+  const db = open();
+  db.prepare(SAVE_LEASE_SQL).run('l1', 'agua', 5, 0, '2026-11-03T12:00:00Z', new Date(renew).toISOString());
+  assert.equal(OFFLINE_CAP_MINUTES, 30);
+
+  const at29 = capFrom(renew + 29 * 60_000);
+  assert.deepEqual(available(db, at29), { agua: 5 });
+  assert.deepEqual({ ...db.prepare(CONSUME_QUOTA_SQL).get(1, 'agua', 1, at29) }, { id: 'l1' }); // devuelve el préstamo de la línea
+
+  const at31 = capFrom(renew + 31 * 60_000);
+  assert.deepEqual(available(db, at31), {});
+  assert.equal(consume(db, 'agua', 1, at31), 0);
+  assert.deepEqual(available(db), { agua: 4 }); // no se descontó nada al rechazar
+});
+
+test('renewAt cuenta desde el inicio de la petición: la demora de la red no alarga el plazo (ADR-0008)', () => {
+  const requestedAt = Date.parse('2026-11-03T12:00:00.000Z');
+  // El servidor emitió 40 s después de que el teléfono pidió; la duración (3 min) es lo único que se usa.
+  assert.equal(renewAt('2026-11-03T12:00:40Z', '2026-11-03T12:03:40Z', requestedAt), '2026-11-03T12:03:00.000Z');
 });

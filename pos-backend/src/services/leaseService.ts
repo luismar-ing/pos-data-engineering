@@ -1,8 +1,14 @@
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { HttpError } from '../http/errors.js';
 
 /** SPEC-005 P7: ventana de la tasa, duración del préstamo, margen y mínimo. */
 export const LEASE_PARAMS = { windowMinutes: 5, leaseMinutes: 3, margin: 1.2, minQty: 5 } as const;
+
+/**
+ * ADR-0008: el préstamo de un dispositivo dado de baja vuelve al stock central a `expires_at` + 30 min (tope sin red
+ * del teléfono) + 2 min de margen. El teléfono deja de vender antes porque mide desde que pidió el préstamo.
+ */
+export const REVOKE_RELEASE_MINUTES = 32;
 
 /**
  * Cuota a prestar (SPEC-005 RF-2): tasa del dispositivo × duración × margen, con mínimo y tope en el stock central.
@@ -31,6 +37,13 @@ const LEASE_COLUMNS = 'id, product_id, quota_total, quota_used, issued_at, expir
  * Correr dentro de una transacción. Bloquea los productos en orden de id para no cruzarse con otras peticiones.
  */
 export async function requestLeases(client: PoolClient, deviceId: string, productIds: string[]) {
+    // SPEC-014 RF-2: un dispositivo dado de baja no recibe préstamos. `for share` espera a una baja en curso.
+    const { rows: [device] } = await client.query<{ revoked_at: Date | null }>(
+        'select revoked_at from devices where id = $1 for share',
+        [deviceId]
+    );
+    if (device?.revoked_at) return { leases: [] as Lease[], unavailable: [...productIds] };
+
     const leases: Lease[] = [];
     const unavailable: string[] = [];
     for (const productId of [...productIds].sort()) {
@@ -94,11 +107,22 @@ export async function closeLeases(client: PoolClient, deviceId: string, items: {
     for (const item of ordered) {
         const productId = productOf.get(item.lease_id)!;
         await client.query('select 1 from products where id = $1 for update', [productId]);
-        const { rows: [lease] } = await client.query<{ quota_total: number; quota_used: number; status: string }>(
-            'select quota_total, quota_used, status from stock_leases where id = $1 for update',
+        const { rows: [lease] } = await client.query<{ quota_total: number; quota_used: number; quota_reported: number | null; status: string }>(
+            'select quota_total, quota_used, quota_reported, status from stock_leases where id = $1 for update',
             [item.lease_id]
         );
         if (!lease) throw new HttpError(404, 'LEASE_NOT_FOUND', 'El préstamo no existe o es de otro dispositivo');
+        if (lease.status === 'expired') {
+            // SPEC-014 RF-6: el servidor ya lo cerró por la baja. Se guarda lo informado para la conciliación,
+            // sin mover stock; el reintento debe traer lo mismo.
+            if (item.quota_used > lease.quota_total || (lease.quota_reported !== null && item.quota_used !== lease.quota_reported)) {
+                throw new HttpError(400, 'INVALID_QUOTA_USED', 'La cantidad vendida informada no es válida para este préstamo');
+            }
+            if (lease.quota_reported === null) {
+                await client.query('update stock_leases set quota_reported = $2 where id = $1', [item.lease_id, item.quota_used]);
+            }
+            continue;
+        }
         const closed = lease.status !== 'active';
         // P6: nunca más que la cuota ni menos que lo informado; si ya estaba cerrado, el reintento debe traer lo mismo.
         if (item.quota_used > lease.quota_total || item.quota_used < lease.quota_used || (closed && item.quota_used !== lease.quota_used)) {
@@ -116,4 +140,54 @@ export async function closeLeases(client: PoolClient, deviceId: string, items: {
         ]);
     }
     return { closed: items.map((item) => item.lease_id) };
+}
+
+/**
+ * SPEC-014 RF-3, RF-5 (ADR-0008): cierra como `expired` los préstamos activos de dispositivos dados de baja cuyo
+ * plazo (`expires_at` + 32 min) ya pasó. Cuenta como vendido lo sincronizado de ese préstamo y devuelve el resto.
+ * Cada préstamo en su transacción, con el mismo orden de bloqueo que `closeLeases`. Devuelve cuántos cerró.
+ */
+export async function releaseRevokedLeases(pool: Pool): Promise<number> {
+    const { rows: due } = await pool.query<{ id: string; product_id: string }>(
+        `select l.id, l.product_id
+         from stock_leases l join devices d on d.id = l.device_id
+         where l.status = 'active' and d.revoked_at is not null
+           and l.expires_at + make_interval(mins => $1) <= now()
+         order by l.product_id, l.id`,
+        [REVOKE_RELEASE_MINUTES]
+    );
+    let released = 0;
+    for (const { id, product_id } of due) {
+        const client = await pool.connect();
+        try {
+            await client.query('begin');
+            await client.query('select 1 from products where id = $1 for update', [product_id]);
+            // Se vuelve a mirar con el préstamo bloqueado: pudo cerrarse normal o reactivarse el dispositivo (RF-5).
+            const { rows: [lease] } = await client.query<{ quota_total: number; synced: number }>(
+                `select l.quota_total,
+                        (select coalesce(sum(si.quantity), 0) from sale_items si where si.lease_id = l.id)::int as synced
+                 from stock_leases l join devices d on d.id = l.device_id
+                 where l.id = $1 and l.status = 'active' and d.revoked_at is not null
+                   and l.expires_at + make_interval(mins => $2) <= now()
+                 for update of l`,
+                [id, REVOKE_RELEASE_MINUTES]
+            );
+            if (lease) {
+                const used = Math.min(lease.synced, lease.quota_total);
+                await client.query(
+                    `update stock_leases set status = 'expired', quota_used = $2, closed_at = now() where id = $1`,
+                    [id, used]
+                );
+                await client.query('update products set central_stock = central_stock + $2 where id = $1', [product_id, lease.quota_total - used]);
+                released++;
+            }
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    return released;
 }

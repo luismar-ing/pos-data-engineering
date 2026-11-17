@@ -2,6 +2,17 @@
 
 /** Renovar cuando quede menos de este porcentaje de la cuota (P4). */
 export const RENEW_THRESHOLD = 0.2;
+/**
+ * Tope sin red (SPEC-014 RF-4, ADR-0008): un préstamo activo vende solo hasta 30 min después de `renew_at`.
+ * El servidor devuelve la cuota de un dispositivo dado de baja a `expires_at` + 32 min.
+ */
+export const OFFLINE_CAP_MINUTES = 30;
+
+/** Límite para los SQL de lo vendible: un préstamo con `renew_at` anterior a esto ya no vende. ISO como `renew_at`. */
+export function capFrom(nowMs: number): string {
+  return new Date(nowMs - OFFLINE_CAP_MINUTES * 60_000).toISOString();
+}
+
 /** Máximo de elementos por petición a /prestamos (contrato de ARCHITECTURE.md). */
 export const LEASE_CHUNK = 200;
 
@@ -20,11 +31,12 @@ export function isLeaseDue(lease: DueCheck, nowMs: number, sessionOpen: boolean)
 }
 
 /**
- * Hora local de renovar: recibido + duración que dio el servidor.
- * Solo se usa la diferencia de horas del servidor, así un reloj del teléfono desfasado no la mueve.
+ * Hora local de renovar: inicio de la petición + duración que dio el servidor.
+ * Solo se usa la diferencia de horas del servidor, así un reloj del teléfono desfasado no la mueve. Se cuenta desde
+ * que se pidió (no desde que llegó la respuesta) para que el tope sin red caiga antes que el del servidor (ADR-0008).
  */
-export function renewAt(issuedAt: string, expiresAt: string, receivedAtMs: number): string {
-  return new Date(receivedAtMs + (Date.parse(expiresAt) - Date.parse(issuedAt))).toISOString();
+export function renewAt(issuedAt: string, expiresAt: string, requestedAtMs: number): string {
+  return new Date(requestedAtMs + (Date.parse(expiresAt) - Date.parse(issuedAt))).toISOString();
 }
 
 export function chunk<T>(items: T[], size = LEASE_CHUNK): T[][] {

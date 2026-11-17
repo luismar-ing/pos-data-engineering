@@ -63,12 +63,13 @@ async function runOnce(): Promise<void> {
     if (!sessionOpen) return; // RF-13: al cerrar la sesión solo se libera
     // shortcut: pide cada ciclo los productos sin stock aunque sigan sin stock; con catálogos grandes, espaciar esos reintentos.
     for (const part of chunk(await productsWithoutLease())) {
+      const requestedAt = Date.now(); // ADR-0008: el plazo cuenta desde que se pidió
       const { leases } = await apiFetch<{ leases: ServerLease[] }>('/prestamos/request', {
         method: 'POST',
         secret,
         body: { product_ids: part },
       });
-      await saveLeases(leases, Date.now());
+      await saveLeases(leases, requestedAt);
       if (leases.length) changed = true;
     }
   } finally {

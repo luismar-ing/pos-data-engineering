@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getDeviceIdentity, setDeviceName, type DeviceIdentity } from '../../../core/device/deviceIdentity';
 import { ensureRegistered } from '../../../core/device/registration';
 import { getSyncSummary, type SyncSummary } from '../../../core/sync/syncRepository';
 import { syncEvents } from '../../../core/sync/syncWorker';
 import { useSessionStore } from '../../../shared/store/sessionStore';
+import { AppText } from '../../../shared/ui/AppText';
+import { Button } from '../../../shared/ui/Button';
+import { Card } from '../../../shared/ui/Card';
+import { Icon } from '../../../shared/ui/Icon';
+import { ScreenHeader } from '../../../shared/ui/ScreenHeader';
+import { TextField } from '../../../shared/ui/TextField';
+import { colors, space } from '../../../shared/ui/theme';
+import { formatTime } from '../../../shared/utils/time';
 import { leaseSync } from '../../leases/data/leaseSync';
 import { closeSession } from '../../session/data/sessionRepository';
+import { applyRole } from '../../admin/data/roleRepository';
+import { canSwitchRole } from '../../admin/domain/role';
 
-/** Ajustes: dispositivo, sesión abierta (SPEC-003 RF-13) y estado de la sincronización (SPEC-008 RF-16). */
+/** Ajustes: dispositivo, sesión abierta (SPEC-003 RF-13), rol (SPEC-013 RF-3, RF-4) y estado de la sincronización (SPEC-008 RF-16). */
 export function SettingsScreen() {
   const session = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
@@ -68,47 +78,76 @@ export function SettingsScreen() {
     ]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.section}>Dispositivo</Text>
-      <Text style={styles.label}>Nombre</Text>
-      <View style={styles.row}>
-        <TextInput style={styles.input} value={name} onChangeText={setName} accessibilityLabel="Nombre del dispositivo" />
-        <Button title="Guardar" onPress={saveName} disabled={busy || !name.trim() || name.trim() === identity?.name} />
-      </View>
-      <Text style={styles.label}>Identificador</Text>
-      <Text selectable>{identity?.id ?? '…'}</Text>
-      <Text style={styles.label}>Registro en el servidor</Text>
-      <Text>{identity?.registeredAt ? `Registrado (${new Date(identity.registeredAt).toLocaleString()})` : 'Pendiente'}</Text>
-      {identity && !identity.registeredAt && <Button title="Reintentar registro" onPress={retryRegistration} disabled={busy} />}
+    <View style={styles.screen}>
+      <ScreenHeader title="Ajustes" />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Card title="Este teléfono">
+          <TextField label="Nombre" value={name} onChangeText={setName} accessibilityLabel="Nombre del dispositivo" />
+          {identity?.registeredAt ? (
+            <View style={styles.status}>
+              <Icon name="exito" size={18} color={colors.action} strokeWidth={2.5} />
+              <AppText style={styles.ok}>Registrado en el servidor</AppText>
+            </View>
+          ) : (
+            <AppText style={styles.pending}>Registro pendiente en el servidor</AppText>
+          )}
+          <AppText variant="caption" selectable>
+            Identificador {identity?.id ?? '…'}
+          </AppText>
+          <Button label="Guardar nombre" variant="secondary" compact onPress={saveName} disabled={busy || !name.trim() || name.trim() === identity?.name} />
+          {identity && !identity.registeredAt && <Button label="Reintentar registro" variant="outline" compact onPress={retryRegistration} disabled={busy} />}
+        </Card>
 
-      <Text style={styles.section}>Sesión</Text>
-      {session ? (
-        <>
-          <Text>Vendedor: {session.seller_name}</Text>
-          <Text>Desde: {new Date(session.opened_at).toLocaleString()}</Text>
-          <Button title="Cerrar sesión" color="#c0392b" onPress={confirmClose} disabled={busy} />
-        </>
-      ) : (
-        <Text>No hay sesión abierta. Ábrela desde Venta.</Text>
-      )}
+        <Card title="Sesión">
+          {session ? (
+            <>
+              <AppText>
+                {session.seller_name}, abierta a las {formatTime(session.opened_at)}
+              </AppText>
+              <Button label="Cerrar sesión" variant="destructive" compact onPress={confirmClose} disabled={busy} />
+            </>
+          ) : (
+            <AppText variant="caption">No hay sesión abierta. Ábrela desde Venta.</AppText>
+          )}
+        </Card>
 
-      <Text style={styles.section}>Sincronización</Text>
-      <Text accessibilityLabel={summary ? `${summary.pending} pendientes, ${summary.failed} fallidos` : undefined}>
-        {summary
-          ? `Pendientes ${summary.pending} · Fallidos ${summary.failed} · Último envío ${
-              summary.syncedAt ? new Date(summary.syncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
-            }`
-          : '…'}
-      </Text>
-      <Button title="Sincronizar ahora" onPress={() => run(syncEvents)} disabled={busy || !isOnline} />
-    </ScrollView>
+        <Card title="Rol">
+          <AppText variant="caption">
+            {canSwitchRole(!!session) ? 'Usas la app como vendedor.' : 'Cierra la sesión de vendedor para cambiar de rol.'}
+          </AppText>
+          <Button label="Cambiar de rol" variant="outline" compact onPress={() => run(() => applyRole(null))} disabled={busy || !canSwitchRole(!!session)} />
+        </Card>
+
+        <Card title="Sincronización">
+          <View style={styles.counts}>
+            <Count value={summary ? String(summary.pending) : '…'} label="por enviar" />
+            <Count value={summary ? String(summary.failed) : '…'} label="con error" />
+            <Count value={summary?.syncedAt ? formatTime(summary.syncedAt) : '—'} label="último envío" />
+          </View>
+          <Button label="Sincronizar ahora" compact onPress={() => run(syncEvents)} disabled={busy || !isOnline} />
+        </Card>
+      </ScrollView>
+    </View>
+  );
+}
+
+function Count({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.count} accessible accessibilityLabel={`${value} ${label}`}>
+      <AppText variant="figure" numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </AppText>
+      <AppText variant="caption">{label}</AppText>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 8 },
-  section: { fontSize: 18, fontWeight: '600', marginTop: 16 },
-  label: { color: '#666', marginTop: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 16 },
+  screen: { flex: 1, backgroundColor: colors.surface },
+  container: { paddingHorizontal: space.xl, paddingBottom: space.xxl, gap: 14 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  ok: { color: colors.action },
+  pending: { color: colors.warningText },
+  counts: { flexDirection: 'row', gap: space.sm },
+  count: { flex: 1 },
 });

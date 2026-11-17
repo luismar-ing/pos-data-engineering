@@ -16,12 +16,12 @@ export const WINDOW_SALES_SQL = `
   where s.created_at >= ?
   group by si.product_id, p.name`;
 
-/** Lo que queda de cada préstamo activo, con el nombre del producto (RF-3). */
+/** Lo que queda de cada préstamo activo y vigente, con el nombre del producto (RF-3). Parámetro: `capFrom(now)` (SPEC-014 RF-4). */
 export const LEASE_AVAILABLE_SQL = `
   select l.product_id, p.name, l.quota_total - l.quota_used as available
   from stock_leases l
   join products p on p.id = l.product_id
-  where l.status = 'active'`;
+  where l.status = 'active' and l.renew_at > ?`;
 
 /** Ventas e ingreso de la sesión; sin join para no duplicar el total de cada venta (RF-8). */
 export const SESSION_TOTALS_SQL = `

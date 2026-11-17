@@ -104,3 +104,4 @@ Que cada teléfono venda solo lo que el servidor le prestó y congeló, con o si
 | 2026-11-03 | tasks.md aprobado → In Progress | Usuario |
 | 2026-11-03 | `close` rechaza (`INVALID_QUOTA_USED`) un préstamo ya cerrado con otro valor | Implementación T3: un reintento distinto indicaría unidades perdidas |
 | 2026-11-03 | CA-1..CA-8 y CA-10 verificados (CA-1, CA-2, CA-5, CA-6, CA-8, CA-10 también con pruebas automáticas). CA-9 sin prueba con dos dispositivos: se omite por decisión del usuario y queda en TD-027 → Done | Usuario |
+| 2026-11-17 | P3 reemplazada por ADR-0008: tope sin red de 30 min tras `renew_at`; el servidor devuelve la cuota de un dispositivo dado de baja (SPEC-014) | Teléfonos perdidos (TD-025). Decisión del usuario |

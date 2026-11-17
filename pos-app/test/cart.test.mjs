@@ -4,7 +4,9 @@ import { test } from 'node:test';
 import {
   MAX_QUANTITY,
   addProduct,
+  categoriesOf,
   changeQuantity,
+  filterProducts,
   matchesSearch,
   priceCart,
   removeLine,
@@ -81,4 +83,28 @@ test('dinero: leer montos, formato y cambio (CA-6)', () => {
   assert.equal(computeChangeCents(6700, 10000), 3300);
   assert.ok(computeChangeCents(6700, 5000) < 0);
   assert.equal(formatCents(3300), '$33.00');
+});
+
+// SPEC-012: filtro por categoría.
+const catalog = [
+  { name: 'Agua 600 ml', category: 'Bebidas' },
+  { name: 'Refresco 355 ml', category: 'Bebidas' },
+  { name: 'Hot dog', category: 'Comida' },
+  { name: 'Papas fritas', category: 'Snacks' },
+  { name: 'Agujetas', category: null },
+];
+
+test('categoriesOf ordena, no repite y omite productos sin categoría (RF-7)', () => {
+  assert.deepEqual(categoriesOf(catalog), ['Bebidas', 'Comida', 'Snacks']);
+  assert.deepEqual(categoriesOf([]), []);
+});
+
+test('filterProducts combina categoría y búsqueda (CA-2)', () => {
+  assert.deepEqual(filterProducts(catalog, 'ag', 'Bebidas').map((p) => p.name), ['Agua 600 ml']);
+  assert.deepEqual(filterProducts(catalog, '', 'Comida').map((p) => p.name), ['Hot dog']);
+});
+
+test('filterProducts: los productos sin categoría solo salen en "Todo" (RF-7)', () => {
+  assert.deepEqual(filterProducts(catalog, 'ag', null).map((p) => p.name), ['Agua 600 ml', 'Agujetas']);
+  assert.equal(filterProducts(catalog, 'agujetas', 'Snacks').length, 0);
 });

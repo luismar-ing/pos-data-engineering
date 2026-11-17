@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import { Barlow_400Regular } from '@expo-google-fonts/barlow/400Regular';
+import { Barlow_500Medium } from '@expo-google-fonts/barlow/500Medium';
+import { Barlow_600SemiBold } from '@expo-google-fonts/barlow/600SemiBold';
+import { Barlow_700Bold } from '@expo-google-fonts/barlow/700Bold';
+import { BarlowSemiCondensed_600SemiBold } from '@expo-google-fonts/barlow-semi-condensed/600SemiBold';
+import { BarlowSemiCondensed_700Bold } from '@expo-google-fonts/barlow-semi-condensed/700Bold';
+import { BarlowSemiCondensed_800ExtraBold } from '@expo-google-fonts/barlow-semi-condensed/800ExtraBold';
 import { getDatabase } from './core/db/database';
 import { getDeviceIdentity } from './core/device/deviceIdentity';
 import { ensureRegistered } from './core/device/registration';
@@ -10,23 +19,49 @@ import { leaseSync } from './features/leases/data/leaseSync';
 import { getCatalogSyncedAt } from './features/inventory/data/catalogRepository';
 import { syncCatalog } from './features/inventory/data/catalogSync';
 import { getOpenSession } from './features/session/data/sessionRepository';
+import { getRole, setRole } from './features/admin/data/roleRepository';
+import { clearAdminSession, loadAdminSession } from './features/admin/data/adminSession';
+import { isSessionValid } from './features/admin/domain/session';
 import { useSessionStore } from './shared/store/sessionStore';
 import { RootNavigator } from './navigation/RootNavigator';
+import { colors, fonts } from './shared/ui/theme';
 
 const BACKGROUND_SYNC_MS = 30_000;
+
+// SPEC-012 RNF-3: los .ttf van en el paquete de la app (require), así que cargan sin red y en Expo Go.
+const FONT_FILES = {
+  [fonts.regular]: Barlow_400Regular,
+  [fonts.medium]: Barlow_500Medium,
+  [fonts.semibold]: Barlow_600SemiBold,
+  [fonts.bold]: Barlow_700Bold,
+  [fonts.displaySemibold]: BarlowSemiCondensed_600SemiBold,
+  [fonts.displayBold]: BarlowSemiCondensed_700Bold,
+  [fonts.displayHeavy]: BarlowSemiCondensed_800ExtraBold,
+};
 
 type DbState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
 
 export default function App() {
   const [db, setDb] = useState<DbState>({ status: 'loading' });
+  const [fontsLoaded, fontError] = useFonts(FONT_FILES);
 
   useEffect(() => {
     getDatabase()
       .then(async (database) => {
         await getDeviceIdentity(); // RF-1: crea la identidad en el primer arranque, sin red
         const store = useSessionStore.getState();
-        store.setCurrentSession(await getOpenSession()); // RF-10
+        const openSession = await getOpenSession();
+        store.setCurrentSession(openSession); // RF-10
         store.setCatalogSyncedAt(await getCatalogSyncedAt(database));
+        // SPEC-013 RF-3, RF-8: rol guardado y sesión de admin solo si sigue vigente.
+        // En iOS el almacén seguro sobrevive a desinstalar: sin rol admin, una sesión vieja se borra.
+        // Instalaciones anteriores a SPEC-013 no tienen rol: con una sesión de vendedor abierta siguen como vendedor (RF-4).
+        const role = (await getRole()) ?? (openSession ? 'seller' : null);
+        if (role) await setRole(role);
+        store.setRole(role);
+        const adminSession = role === 'admin' ? await loadAdminSession() : null;
+        if (isSessionValid(adminSession, Date.now())) store.setAdminSession(adminSession);
+        else await clearAdminSession();
         setDb({ status: 'ready' });
         void ensureRegistered(); // RF-2: en segundo plano, sin bloquear la UI
         // SPEC-004 RF-1: sin red sigue con el catálogo guardado; el error se ve al actualizar desde Inventario.
@@ -52,10 +87,11 @@ export default function App() {
       });
   }, []);
 
-  if (db.status === 'loading') {
+  if (fontError) console.error('No se pudieron cargar las fuentes; se usa la del sistema', fontError);
+  if (db.status === 'loading' || (!fontsLoaded && !fontError)) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.action} />
       </View>
     );
   }
@@ -69,7 +105,11 @@ export default function App() {
     );
   }
 
-  return <RootNavigator />;
+  return (
+    <SafeAreaProvider>
+      <RootNavigator />
+    </SafeAreaProvider>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -5,7 +5,6 @@ import { pool } from '../db/pool.js';
 const isoDate = z.iso.datetime({ offset: true });
 const base = { event_id: z.uuid(), device_id: z.string().min(1), created_at: isoDate };
 
-// Forma de cada tipo (SPEC-008 plan §5). El payload es el payload_json de event_log en la app.
 const saleCreated = z
     .object({
         ...base,
@@ -27,6 +26,8 @@ const saleCreated = z
                         product_id: z.uuid(),
                         quantity: z.number().int().positive(),
                         unit_price_cents: z.number().int().min(0),
+                        // SPEC-014 RF-8, RF-9: los eventos anteriores no lo traen ⇒ línea sin préstamo asignado.
+                        lease_id: z.uuid().nullable().optional(),
                     })
                 )
                 .min(1),
@@ -87,8 +88,8 @@ async function apply(client: PoolClient, event: SyncEvent): Promise<void> {
         );
         for (const item of items) {
             await client.query(
-                'insert into sale_items (id, sale_id, product_id, quantity, unit_price_cents) values ($1, $2, $3, $4, $5)',
-                [item.id, item.sale_id, item.product_id, item.quantity, item.unit_price_cents]
+                'insert into sale_items (id, sale_id, product_id, quantity, unit_price_cents, lease_id) values ($1, $2, $3, $4, $5, $6)',
+                [item.id, item.sale_id, item.product_id, item.quantity, item.unit_price_cents, item.lease_id ?? null]
             );
         }
         return; // RF-11: el stock ya salió al prestarse; aquí no se toca central_stock

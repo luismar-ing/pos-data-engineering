@@ -10,3 +10,5 @@ Una decisión de arquitectura = un archivo `NNNN-titulo.md` (plantilla: [0000-te
 | [0004](0004-monorepo.md) | Unificar app y backend en un monorepo | Aceptado |
 | [0005](0005-expo-sdk-58.md) | Actualizar la app a Expo SDK 58 | Aceptado |
 | [0006](0006-errores-y-migraciones-backend.md) | Formato único de errores y runner de migraciones propio | Aceptado |
+| [0007](0007-autenticacion-administrador.md) | Autenticación de administrador | Aceptado |
+| [0008](0008-tope-sin-red-y-baja-de-dispositivo.md) | Tope sin red de 30 min y devolución de la cuota al dar de baja un dispositivo | Aceptado |

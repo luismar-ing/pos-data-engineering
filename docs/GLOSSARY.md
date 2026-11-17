@@ -17,3 +17,9 @@
 | Recibo QR | `receiptQr` | Recibo completo en texto dentro de un código QR, legible con la cámara del cliente sin red (SPEC-010) |
 | Dispositivo | `device_id` | Identificador estable del teléfono/terminal POS |
 | Sesión | `session_id` | Periodo de trabajo de un vendedor en un dispositivo |
+| Rol | `role` (`seller` / `admin`) | Modo en que se usa la app: Vendedor (sin login) o Administrador (con login) (SPEC-013) |
+| Administrador | `admin` | Supervisor o dueño con cuenta y contraseña en el servidor; entra al panel de administración (SPEC-013) |
+| Sesión de administrador | `admin_session` | Login vigente de un administrador; vence a las 8 h. Distinta de la sesión de vendedor (SPEC-013) |
+| Baja de dispositivo | `revoke` | Acción del administrador: le impide pedir préstamos nuevos; la cuota vuelve al stock central tras el tope sin red más 2 min (SPEC-014) |
+| Tope sin red | — | Tiempo (30 min) que un préstamo vencido puede seguir vendiendo sin red; pasado ese tiempo el producto queda agotado en el teléfono hasta renovar (SPEC-014) |
+| Conciliación | `reconciliation` | Comparar lo que un dispositivo informó al cerrar un préstamo con las ventas que llegaron por sync de ese préstamo (SPEC-014) |

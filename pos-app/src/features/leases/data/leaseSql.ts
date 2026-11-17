@@ -1,7 +1,10 @@
 // SPEC-005: SQL de los préstamos locales. Sin imports: test/leases.test.mjs lo prueba con node:sqlite.
 
-/** Unidades que quedan por producto; solo cuentan los préstamos activos (`closing` no vende). */
-export const AVAILABLE_SQL = `select product_id, quota_total - quota_used as available from stock_leases where status = 'active'`;
+/**
+ * Unidades que quedan por producto; solo cuentan los préstamos activos (`closing` no vende) y dentro del tope sin red.
+ * Parámetro: `capFrom(now)` (SPEC-014 RF-4).
+ */
+export const AVAILABLE_SQL = `select product_id, quota_total - quota_used as available from stock_leases where status = 'active' and renew_at > ?`;
 
 export const ACTIVE_LEASES_SQL = `select id, quota_total, quota_used, renew_at from stock_leases where status = 'active'`;
 
@@ -26,7 +29,11 @@ export const SAVE_LEASE_SQL = `
   values (?, ?, ?, ?, ?, ?)
   on conflict do nothing`;
 
-/** Descuenta una línea de venta (RF-7). 0 filas cambiadas ⇒ no hay préstamo activo o no alcanza. */
+/**
+ * Descuenta una línea de venta (SPEC-005 RF-7) y devuelve el id del préstamo (SPEC-014 RF-8).
+ * Parámetros: cantidad, producto, cantidad, `capFrom(now)`. Sin fila ⇒ sin préstamo vigente o no alcanza.
+ */
 export const CONSUME_QUOTA_SQL = `
   update stock_leases set quota_used = quota_used + ?
-  where product_id = ? and status = 'active' and quota_used + ? <= quota_total`;
+  where product_id = ? and status = 'active' and quota_used + ? <= quota_total and renew_at > ?
+  returning id`;

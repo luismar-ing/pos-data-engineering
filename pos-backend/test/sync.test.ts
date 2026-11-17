@@ -137,6 +137,30 @@ test('la venta guarda su session_id', async () => {
     assert.equal(rows[0].session_id, sale.payload.sale.session_id);
 });
 
+test('lease_id en la línea: se guarda; evento viejo sin él y un id desconocido también se aceptan (SPEC-014 CA-6, CA-7, RNF-4)', async () => {
+    const withLease = saleEvent();
+    const leaseId = randomUUID(); // ningún préstamo con este id: no debe trabar la sync
+    (withLease.payload.items[0] as Record<string, unknown>).lease_id = leaseId;
+    const old = saleEvent();
+    const nullLease = saleEvent();
+    (nullLease.payload.items[0] as Record<string, unknown>).lease_id = null;
+
+    const { body } = await send([withLease, old, nullLease]);
+    assert.deepEqual(statuses(body), ['inserted', 'inserted', 'inserted']);
+    const { rows } = await pool.query<{ sale_id: string; lease_id: string | null }>('select sale_id, lease_id from sale_items');
+    const bySale = new Map(rows.map((r) => [r.sale_id, r.lease_id]));
+    assert.equal(bySale.get(withLease.event_id), leaseId);
+    assert.equal(bySale.get(old.event_id), null);
+    assert.equal(bySale.get(nullLease.event_id), null);
+});
+
+test('lease_id que no es uuid ⇒ rejected', async () => {
+    const sale = saleEvent();
+    (sale.payload.items[0] as Record<string, unknown>).lease_id = 'no-uuid';
+    const { body } = await send([sale]);
+    assert.deepEqual(statuses(body), ['rejected']);
+});
+
 // SPEC-011: reintentos de sync.
 test('lote cortado: lo ya guardado responde duplicate y lo demás inserted, sin repetir ventas (SPEC-011 CA-5, RF-7)', async () => {
     const events = [saleEvent(), saleEvent(), saleEvent(), saleEvent()];
