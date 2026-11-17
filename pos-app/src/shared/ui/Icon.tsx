@@ -11,6 +11,8 @@ const PATHS = {
   actualizar: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
   sinRed: 'M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M3 3l18 18',
   exito: 'M5 12.5l4.5 4.5L19 7.5',
+  telefono: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',
+  conciliar: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -1,4 +1,5 @@
 import { getDatabase } from '../../../core/db/database';
+import { capFrom } from '../../leases/domain/leasePolicy';
 import {
   averageTicketCents,
   buildRunout,
@@ -51,7 +52,7 @@ async function getRunout(db: Db, nowMs: number) {
   const windowRows = await db.getAllAsync<WindowRow & { first_sale_at: string }>(WINDOW_SALES_SQL, [
     new Date(nowMs - WINDOW_MINUTES * 60_000).toISOString(),
   ]);
-  const leases = await db.getAllAsync<LeaseRow>(LEASE_AVAILABLE_SQL);
+  const leases = await db.getAllAsync<LeaseRow>(LEASE_AVAILABLE_SQL, [capFrom(nowMs)]);
   const firstSaleMs = windowRows.length ? Math.min(...windowRows.map((row) => Date.parse(row.first_sale_at))) : null;
   const minutes = windowMinutes(nowMs, firstSaleMs);
   return { windowRows, minutes, ...buildRunout(windowRows, leases, minutes) };

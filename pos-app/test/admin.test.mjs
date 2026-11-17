@@ -41,3 +41,24 @@ test('todayRange: desde la medianoche local hasta ahora (RF-10)', () => {
   assert.deepEqual([start.getHours(), start.getMinutes(), start.getSeconds(), start.getMilliseconds()], [0, 0, 0, 0]);
   assert.equal(start.toDateString(), new Date(NOW).toDateString());
 });
+
+// SPEC-014: formulario de producto y ajuste de stock.
+import { parseProductForm, parseStockDelta } from '../src/features/admin/domain/productForm.ts';
+
+test('formulario de producto: valores limpios o el primer error (RF-13, RF-14)', () => {
+  assert.deepEqual(parseProductForm({ name: ' Elote ', category: ' ', price: '30,5', initialStock: '12' }), {
+    name: 'Elote', category: null, unit_price_cents: 3050, initial_stock: 12,
+  });
+  assert.deepEqual(parseProductForm({ name: 'Elote', category: 'Comida', price: '30' }), { name: 'Elote', category: 'Comida', unit_price_cents: 3000 });
+  assert.match(parseProductForm({ name: '  ', category: '', price: '1' }).error, /nombre/);
+  assert.match(parseProductForm({ name: 'A', category: '', price: '1.234' }).error, /Precio/);
+  assert.match(parseProductForm({ name: 'A', category: '', price: '1', initialStock: '-1' }).error, /Stock inicial/);
+  assert.match(parseProductForm({ name: 'A', category: '', price: '1', initialStock: '' }).error, /Stock inicial/);
+});
+
+test('ajuste de stock: entero con signo, distinto de 0 (RF-15)', () => {
+  assert.equal(parseStockDelta('+20'), 20);
+  assert.equal(parseStockDelta('-5'), -5);
+  assert.equal(parseStockDelta(' 7 '), 7);
+  for (const bad of ['0', '', '1.5', 'abc', '--2', '99999999']) assert.equal(parseStockDelta(bad), null, bad);
+});

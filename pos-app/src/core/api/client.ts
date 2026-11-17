@@ -13,7 +13,7 @@ export class ApiError extends Error {
 }
 
 interface ApiRequest {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH';
   body?: unknown;
   /** Secreto del dispositivo para las rutas autenticadas (SPEC-003 RF-5). */
   secret?: string;

@@ -117,7 +117,7 @@ test('la ventana ignora ventas anteriores y lee lo disponible de los préstamos 
 
   db.exec(`insert into stock_leases (id, product_id, quota_total, quota_used, status, issued_at, renew_at)
            values ('l1', 'agua', 10, 4, 'active', 'x', 'x'), ('l2', 'papas', 5, 0, 'released', 'x', 'x')`);
-  assert.deepEqual(db.prepare(LEASE_AVAILABLE_SQL).all().map((r) => ({ ...r })), [{ product_id: 'agua', name: 'Agua', available: 6 }]);
+  assert.deepEqual(db.prepare(LEASE_AVAILABLE_SQL).all(iso(NOW - 30 * MIN)).map((r) => ({ ...r })), [{ product_id: 'agua', name: 'Agua', available: 6 }]);
 });
 
 test('2 000 productos y 10 000 ventas: el panel completo en menos de 200 ms (referencia de CA-7)', () => {
@@ -142,7 +142,7 @@ test('2 000 productos y 10 000 ventas: el panel completo en menos de 200 ms (ref
   const started = performance.now();
   db.prepare(TARGET_SESSION_SQL).get();
   db.prepare(WINDOW_SALES_SQL).all(iso(NOW - 10 * MIN));
-  db.prepare(LEASE_AVAILABLE_SQL).all();
+  db.prepare(LEASE_AVAILABLE_SQL).all(iso(NOW - 30 * MIN));
   db.prepare(SESSION_TOTALS_SQL).get('ses');
   db.prepare(SESSION_UNITS_SQL).get('ses');
   db.prepare(TOP_PRODUCTS_SQL).all('ses', TOP_LIMIT);

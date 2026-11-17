@@ -2,6 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import { getDatabase } from '../../../core/db/database';
 import { getDeviceIdentity } from '../../../core/device/deviceIdentity';
 import { CONSUME_QUOTA_SQL } from '../../leases/data/leaseSql';
+import { capFrom } from '../../leases/domain/leasePolicy';
 import type { CartLine, PaymentMethod } from '../domain/cart';
 import { computeTotalCents, validateSaleLines, type SaleLineInput } from '../domain/saleTotals';
 
@@ -21,6 +22,8 @@ export interface SaleItem {
   product_id: string;
   quantity: number;
   unit_price_cents: number;
+  /** Préstamo del que salió la línea (SPEC-014 RF-8). */
+  lease_id: string;
 }
 
 /** Payload del evento `sale_created`: la venta completa, tal como la recibe el backend. */
@@ -58,7 +61,8 @@ export interface CreateSaleInput {
  * El id del evento es el mismo que el de la venta, así el backend puede deduplicar por él.
  * Toma el dispositivo y la sesión abierta; sin sesión lanza `NoOpenSessionError` (SPEC-003 RF-8, RF-11).
  * Cobra el precio vigente del catálogo local; un producto inactivo lanza `ProductUnavailableError` (SPEC-007 RF-9).
- * Descuenta cada línea de la cuota del préstamo; si no alcanza lanza `InsufficientQuotaError` y no escribe nada (SPEC-005 RF-7).
+ * Descuenta cada línea de la cuota del préstamo vigente y guarda su id en la línea; si no alcanza o pasó el tope sin red
+ * lanza `InsufficientQuotaError` y no escribe nada (SPEC-005 RF-7, SPEC-014 RF-4, RF-8).
  */
 export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPayload> {
   if (input.lines.length === 0) throw new Error('La venta debe tener al menos una línea');
@@ -84,9 +88,12 @@ export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPay
       return { productId: line.productId, quantity: line.quantity, unitPriceCents: product.unit_price_cents };
     });
     validateSaleLines(lines);
+    const cap = capFrom(Date.parse(createdAt)); // SPEC-014 RF-4: un préstamo pasado el tope sin red no vende
+    const leaseIds: string[] = [];
     for (const line of lines) {
-      const { changes } = await txn.runAsync(CONSUME_QUOTA_SQL, [line.quantity, line.productId, line.quantity]);
-      if (changes === 0) throw new InsufficientQuotaError();
+      const lease = await txn.getFirstAsync<{ id: string }>(CONSUME_QUOTA_SQL, [line.quantity, line.productId, line.quantity, cap]);
+      if (!lease) throw new InsufficientQuotaError();
+      leaseIds.push(lease.id);
     }
 
     const sale: Sale = {
@@ -97,12 +104,13 @@ export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPay
       created_at: createdAt,
       session_id: session.id,
     };
-    const items: SaleItem[] = lines.map((line) => ({
+    const items: SaleItem[] = lines.map((line, i) => ({
       id: randomUUID(),
       sale_id: sale.id,
       product_id: line.productId,
       quantity: line.quantity,
       unit_price_cents: line.unitPriceCents,
+      lease_id: leaseIds[i]!,
     }));
     payload = { sale, items };
 
@@ -112,8 +120,8 @@ export async function createSale(input: CreateSaleInput): Promise<SaleCreatedPay
     );
     for (const item of items) {
       await txn.runAsync(
-        'insert into sale_items (id, sale_id, product_id, quantity, unit_price_cents) values (?, ?, ?, ?, ?)',
-        [item.id, item.sale_id, item.product_id, item.quantity, item.unit_price_cents]
+        'insert into sale_items (id, sale_id, product_id, quantity, unit_price_cents, lease_id) values (?, ?, ?, ?, ?, ?)',
+        [item.id, item.sale_id, item.product_id, item.quantity, item.unit_price_cents, item.lease_id]
       );
     }
     await txn.runAsync(

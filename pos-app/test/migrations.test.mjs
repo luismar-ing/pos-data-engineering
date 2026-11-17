@@ -46,3 +46,14 @@ test('sales.session_id debe existir en sessions', () => {
     /FOREIGN KEY constraint failed/
   );
 });
+
+test('v5 → v6: las líneas anteriores quedan sin préstamo y las nuevas lo guardan (SPEC-014 RF-8, RF-9)', () => {
+  const db = open(5);
+  db.exec(`insert into products (id, name, unit_price_cents) values ('agua', 'Agua', 1500)`);
+  db.exec(`insert into sales (id, device_id, total_cents, payment_method, created_at) values ('s1', 'd', 1500, 'cash', '2026-11-17T10:00:00Z')`);
+  db.exec(`insert into sale_items (id, sale_id, product_id, quantity, unit_price_cents) values ('i1', 's1', 'agua', 1, 1500)`);
+  db.exec(MIGRATIONS[5]);
+  db.exec(`insert into sale_items (id, sale_id, product_id, quantity, unit_price_cents, lease_id) values ('i2', 's1', 'agua', 1, 1500, 'l1')`);
+  const rows = db.prepare('select id, lease_id from sale_items order by id').all().map((r) => ({ ...r }));
+  assert.deepEqual(rows, [{ id: 'i1', lease_id: null }, { id: 'i2', lease_id: 'l1' }]);
+});

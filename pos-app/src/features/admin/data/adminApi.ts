@@ -1,3 +1,4 @@
+import { randomUUID } from 'expo-crypto';
 import { ApiError, apiFetch } from '../../../core/api/client';
 import { useSessionStore } from '../../../shared/store/sessionStore';
 import { isSessionValid, type AdminSession } from '../domain/session';
@@ -25,6 +26,9 @@ export type StockStatus = 'ok' | 'no_cuadra' | 'sync_supera_stock' | 'sin_stock_
 export interface StockProduct {
   product_id: string;
   name: string;
+  category: string | null;
+  unit_price_cents: number;
+  active: boolean;
   initial_stock: number | null;
   central_stock: number;
   leased_active: number;
@@ -40,14 +44,14 @@ async function endSession(): Promise<void> {
 }
 
 /** Petición con el token de admin. Vencida o con 401, se borra la sesión y la app vuelve al login (RF-8, CA-7). */
-async function adminFetch<T>(path: string, method: 'GET' | 'POST' = 'GET'): Promise<T> {
+async function adminFetch<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown): Promise<T> {
   const session = useSessionStore.getState().adminSession;
   if (!isSessionValid(session, Date.now())) {
     await endSession();
     throw new ApiError(401, 'UNAUTHORIZED', 'La sesión de administrador venció');
   }
   try {
-    return await apiFetch<T>(path, { method, secret: session.token });
+    return await apiFetch<T>(path, { method, secret: session.token, body });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) await endSession();
     throw error;
@@ -76,3 +80,109 @@ export const getSales = ({ from, to }: { from: string; to: string }) =>
   adminFetch<SalesSummary>(`/admin/sales?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
 
 export const getStock = () => adminFetch<{ generated_at: string; products: StockProduct[] }>('/admin/stock');
+
+// SPEC-014: dispositivos, conciliación, catálogo y registro de cambios.
+
+export interface DeviceLease {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quota_total: number;
+  quota_used: number;
+  expires_at: string;
+  /** Cuándo vuelve al stock central; solo con el dispositivo dado de baja (ADR-0008). */
+  release_at: string | null;
+}
+
+export interface AdminDevice {
+  id: string;
+  name: string | null;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  last_sync_at: string | null;
+  open_session: { seller_name: string; opened_at: string } | null;
+  leases: DeviceLease[];
+}
+
+export type ReconciliationResult = 'cuadra' | 'faltan_ventas' | 'sobran_ventas';
+
+export interface Reconciliation {
+  generated_at: string;
+  leases: {
+    lease_id: string;
+    device_id: string;
+    device_name: string | null;
+    product_id: string;
+    product_name: string;
+    status: 'released' | 'expired';
+    closed_at: string;
+    reported: number;
+    synced: number;
+    result: ReconciliationResult;
+    returned_extra: number;
+  }[];
+  unassigned: { device_id: string; device_name: string | null; product_id: string; product_name: string; units: number }[];
+}
+
+export interface AdminProduct {
+  id: string;
+  name: string;
+  category: string | null;
+  unit_price_cents: number;
+  active: boolean;
+  central_stock: number;
+  initial_stock: number | null;
+}
+
+export interface AuditEntry {
+  request_id: string;
+  username: string;
+  action: 'device_revoke' | 'device_reactivate' | 'product_create' | 'product_update' | 'stock_adjust';
+  entity_id: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown>;
+  created_at: string;
+}
+
+// RNF-2: una acción que falló por red conserva su request_id; el reintento no aplica dos veces en el servidor.
+const pendingIds = new Map<string, string>();
+
+async function adminAction<T>(key: string, path: string, method: 'POST' | 'PATCH', body: object): Promise<T> {
+  const requestId = pendingIds.get(key) ?? randomUUID();
+  pendingIds.set(key, requestId);
+  try {
+    const result = await adminFetch<T>(path, method, { ...body, request_id: requestId });
+    pendingIds.delete(key);
+    return result;
+  } catch (error) {
+    // Solo sin respuesta puede haberse aplicado sin saberlo; cualquier respuesta del servidor cierra la acción.
+    if (!(error instanceof ApiError && error.code === 'NETWORK_ERROR')) pendingIds.delete(key);
+    throw error;
+  }
+}
+
+export const getDevices = () => adminFetch<{ generated_at: string; devices: AdminDevice[] }>('/admin/devices');
+
+export const setDeviceRevoked = (deviceId: string, revoked: boolean) =>
+  adminAction<{ device: AdminDevice }>(
+    `device:${deviceId}:${revoked}`,
+    `/admin/devices/${encodeURIComponent(deviceId)}/${revoked ? 'revoke' : 'reactivate'}`,
+    'POST',
+    {}
+  );
+
+export const getReconciliation = ({ from, to }: { from: string; to: string }) =>
+  adminFetch<Reconciliation>(`/admin/reconciliation?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+
+export const createProduct = (input: { name: string; category?: string; unit_price_cents: number; initial_stock: number }) =>
+  adminAction<{ product: AdminProduct }>('product:create', '/admin/products', 'POST', input);
+
+export const updateProduct = (
+  id: string,
+  patch: { name?: string; category?: string | null; unit_price_cents?: number; active?: boolean }
+) => adminAction<{ product: AdminProduct }>(`product:${id}:update`, `/admin/products/${id}`, 'PATCH', patch);
+
+export const adjustStock = (id: string, delta: number) =>
+  adminAction<{ product: AdminProduct }>(`product:${id}:stock`, `/admin/products/${id}/stock`, 'POST', { delta });
+
+export const getAudit = () => adminFetch<{ entries: AuditEntry[] }>('/admin/audit?limit=50');

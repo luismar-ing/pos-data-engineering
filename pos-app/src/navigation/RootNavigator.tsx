@@ -11,6 +11,8 @@ import { AdminLoginScreen } from '../features/admin/ui/AdminLoginScreen';
 import { AdminSalesScreen } from '../features/admin/ui/AdminSalesScreen';
 import { AdminStockScreen } from '../features/admin/ui/AdminStockScreen';
 import { AdminAccountScreen } from '../features/admin/ui/AdminAccountScreen';
+import { AdminDevicesScreen } from '../features/admin/ui/AdminDevicesScreen';
+import { AdminReconciliationScreen } from '../features/admin/ui/AdminReconciliationScreen';
 import { useSessionStore } from '../shared/store/sessionStore';
 import { OfflineBanner } from '../shared/ui/OfflineBanner';
 import { Icon, type IconName } from '../shared/ui/Icon';
@@ -23,7 +25,7 @@ const theme = {
     colors: { ...DefaultTheme.colors, background: colors.background, card: colors.background, text: colors.ink, border: colors.line, primary: colors.action },
 };
 
-const ICONS: Record<string, IconName> = { Venta: 'venta', Inventario: 'inventario', Dashboard: 'dashboard', Ajustes: 'ajustes', Ventas: 'dashboard', Stock: 'inventario', Cuenta: 'ajustes' };
+const ICONS: Record<string, IconName> = { Venta: 'venta', Inventario: 'inventario', Dashboard: 'dashboard', Ajustes: 'ajustes', Ventas: 'dashboard', Stock: 'inventario', Teléfonos: 'telefono', Conciliación: 'conciliar', Cuenta: 'ajustes' };
 
 /**
  * Pantallas según el rol (SPEC-013): sin rol, la selección; vendedor, las pestañas de siempre;
@@ -55,6 +57,8 @@ export function RootNavigator() {
                     <>
                         <Tab.Screen name="Ventas" component={AdminSalesScreen} />
                         <Tab.Screen name="Stock" component={AdminStockScreen} />
+                        <Tab.Screen name="Teléfonos" component={AdminDevicesScreen} />
+                        <Tab.Screen name="Conciliación" component={AdminReconciliationScreen} options={{ tabBarLabel: "Conciliar" }} />
                         <Tab.Screen name="Cuenta" component={AdminAccountScreen} />
                     </>
                 ) : (
