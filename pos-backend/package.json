@@ -12,6 +12,7 @@
     "db:migrate": "tsx src/db/cli.ts migrate",
     "db:seed": "tsx src/db/cli.ts seed",
     "scenario:reset": "tsx src/db/cli.ts reset-scenario",
+    "demo:reset": "tsx src/db/cli.ts demo-reset",
     "report:stock": "tsx src/db/cli.ts report",
     "admin:set": "tsx src/db/cli.ts admin-set"
   },

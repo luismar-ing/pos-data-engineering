@@ -18,6 +18,7 @@ Guía: [SPEC_GUIDE.md](SPEC_GUIDE.md) · Plantillas: [_template/](_template/)
 | [SPEC-012](012-rediseno-visual/spec.md) | Rediseño visual "Señalética de feria" | 4 | app | 003–010 | 🏁 Done |
 | [SPEC-013](013-panel-admin/spec.md) | Panel de administración: rol, login, ventas y stock | 5 | app, backend | 002, 003, 008, 011, 012 | 🏁 Done |
 | [SPEC-014](014-admin-acciones/spec.md) | Panel de administración: dispositivos, conciliación y catálogo | 5 | app, backend | 013, 004, 005, 007, 008 | 🏁 Done |
+| [SPEC-015](015-demo/spec.md) | Datos semilla y guion de demo | 4 | backend, docs | 011, 013, 014 | 🏁 Done |
 
 Estados: 📝 Draft · ✅ Approved · 🚧 In Progress · ⛔ Blocked · 🏁 Done · ❌ Rejected · ⬜ Por redactar
 

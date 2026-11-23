@@ -1,6 +1,7 @@
-// Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|report|admin-set <usuario>
+// Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|demo-reset|report|admin-set <usuario>
 import type { Pool } from 'pg';
 import { config } from '../config.js';
+import { resetDemo } from '../dev/demo.js';
 import { assertDevDatabase, resetScenario } from '../dev/scenario.js';
 import { stockReport, type StockStatus } from '../services/stockService.js';
 import { setAdmin } from '../services/adminAuthService.js';
@@ -40,6 +41,14 @@ async function reportCommand(p: Pool) {
     if (rows.some((r) => r.status === 'no_cuadra' || r.status === 'sync_supera_stock')) process.exitCode = 1; // sirve en scripts
 }
 
+// SPEC-015: estado inicial de la demo (catálogo de 20 productos e historial de "Caja 2 (demo)").
+async function demoResetCommand(p: Pool) {
+    assertDevDatabase(config.dbUrl);
+    const started = Date.now();
+    await resetDemo(p);
+    console.log(`demo: lista en ${Date.now() - started} ms (20 productos, Hot dog en 10, historial de "Caja 2 (demo)"; teléfonos activos)`);
+}
+
 // SPEC-013 RF-9: la contraseña llega por ADMIN_PASSWORD, nunca por argumentos (no queda en el historial del shell).
 async function adminSetCommand(p: Pool) {
     const username = process.argv[3] ?? '';
@@ -51,13 +60,14 @@ const commands: Record<string, (p: Pool) => Promise<unknown>> = {
     migrate,
     seed,
     'reset-scenario': resetCommand,
+    'demo-reset': demoResetCommand,
     report: reportCommand,
     'admin-set': adminSetCommand,
 };
 const run = commands[process.argv[2] ?? ''];
 
 if (!run) {
-    console.error('Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|report|admin-set <usuario>');
+    console.error('Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|demo-reset|report|admin-set <usuario>');
     process.exit(1);
 }
 
