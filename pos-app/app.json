@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "pos-app",
+    "name": "POS-DE",
     "slug": "pos-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.luismaring.posde",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

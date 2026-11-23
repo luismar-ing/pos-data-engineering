@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { after, before, beforeEach, test } from 'node:test';
-import { DEMO_DEVICE_ID, DEMO_PRODUCTS, ID, resetDemo } from '../src/dev/demo.js';
+import { DEMO_DEVICE_ID, DEMO_PRODUCTS, ID, initDemo, resetDemo } from '../src/dev/demo.js';
 import { reconciliation } from '../src/services/adminReconciliationService.js';
 import { stockReport } from '../src/services/stockService.js';
 import { pool, postJson, registerDevice, resetDb, startServer } from './helpers.js';
@@ -114,4 +114,23 @@ test('el comando no corre contra una base que no es de desarrollo ni de pruebas 
     assert.equal(result.code, 1);
     assert.match(result.stderr, /posde_prod/);
     assert.deepEqual(await snapshot(), before);
+});
+
+test('arranque de demo: con la base vacía carga la demo y crea el administrador; después no cambia nada (SPEC-016 CA-1)', async () => {
+    await pool.query('truncate products, devices cascade');
+    const admin = { username: 'demo', password: randomUUID() };
+
+    assert.deepEqual(await initDemo(pool, admin), { demoLoaded: true, adminCreated: true });
+    assert.equal(await count('select count(*)::int as n from products where active'), DEMO_PRODUCTS.length);
+    assert.equal(await count('select count(*)::int as n from sales'), 30);
+    const hash = (await pool.query(`select password_hash from admins where username = 'demo'`)).rows[0].password_hash;
+
+    await pool.query(`update products set central_stock = central_stock - 1, initial_stock = initial_stock - 1 where id = $1`, [ID.agua]); // una venta "real" no se borra
+    const before = await snapshot();
+    assert.deepEqual(await initDemo(pool, { username: 'demo', password: randomUUID() }), { demoLoaded: false, adminCreated: false });
+    assert.deepEqual(await snapshot(), before);
+    assert.equal((await pool.query(`select password_hash from admins where username = 'demo'`)).rows[0].password_hash, hash);
+
+    // Sin variables de administrador no crea ninguno.
+    assert.deepEqual(await initDemo(pool, {}), { demoLoaded: false, adminCreated: false });
 });

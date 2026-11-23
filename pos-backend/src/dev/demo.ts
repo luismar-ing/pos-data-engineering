@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { seed } from '../db/migrate.js';
+import { setAdmin } from '../services/adminAuthService.js';
 
 export interface DemoProduct {
     id: string;
@@ -194,4 +195,18 @@ export async function resetDemo(pool: Pool, now = new Date()): Promise<void> {
     } finally {
         client.release();
     }
+}
+
+/** SPEC-016 RF-2, RF-3: arranque del servidor de demo (ADR-0009). Carga la demo solo con la base vacía y crea el administrador solo si no existe. */
+export async function initDemo(pool: Pool, admin: { username?: string | undefined; password?: string | undefined }): Promise<{ demoLoaded: boolean; adminCreated: boolean }> {
+    const { rows: [products] } = await pool.query<{ n: number }>('select count(*)::int as n from products');
+    const demoLoaded = products!.n === 0;
+    if (demoLoaded) await resetDemo(pool);
+
+    let adminCreated = false;
+    if (admin.username && admin.password) {
+        const { rows: [existing] } = await pool.query<{ n: number }>('select count(*)::int as n from admins where username = $1', [admin.username]);
+        if (existing!.n === 0) adminCreated = (await setAdmin(pool, admin.username, admin.password)).created; // nunca cambia una contraseña existente
+    }
+    return { demoLoaded, adminCreated };
 }
