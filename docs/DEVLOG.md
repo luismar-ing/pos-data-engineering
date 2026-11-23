@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-22 — SPEC-015: datos semilla y guion de demo (cierre del proyecto)
+**Spec:** SPEC-015
+**Hecho:** Verificación inicial: backend 95/95 y app 70/70, `tsc` ok en los dos. Spec, plan y tareas aprobados; T1–T6. `src/dev/demo.ts` (`DEMO_PRODUCTS`, `demoHistory`, `resetDemo`), comando `demo-reset` y `npm run demo:reset`, `test/demo.test.ts` (CA-1..CA-4), `docs/demo/guion.md`. Roadmap: fases 4 y 5 cerradas.
+**Verificación:** backend `npm test` 99/99, `tsc` ok. `demo:reset` en `posde` en 341–377 ms; `report:stock` con los 20 productos en `ok`. Ensayo en el emulador `pos_pixel` (sin iPhone): cobro de $140.00 con cambio $60.00 y QR; "Sin conexión" en 12 s; 5 Hot dog sin red y "Agotado" en el sexto; reconexión en 14 s, 0 por enviar y Hot dog `ok` en el reporte; Dashboard con ritmo y "se agota primero"; panel con 30 ventas de "Caja 2 (demo)" ($3020.00), "Todo cuadra", 37 préstamos sin diferencias, baja y reactivación, alta de "Agua mineral 1 L" y registro de cambios. Se usó un administrador de ensayo que después se borró; la base quedó recién reiniciada.
+**Decisiones:** el historial va en un teléfono sin secreto ("Caja 2 (demo)") y no vende Hot dog, para que los dos teléfonos de la demo se repartan sus 10. `demo:reset` borra los teléfonos sin contacto en 24 h (hallado en el ensayo: 6 registros viejos en "Por teléfono"); si uno vuelve, se registra solo. Guion: poner el emulador en la zona horaria local (en UTC, "Hoy" mostraba 16 de 30 ventas). `.env.local` de la app apunta a la IP actual de la PC en casa (192.168.1.131).
+**Bloqueos / pendientes:** ensayo con el iPhone (actos con dos dispositivos, TD-031, TD-034).
+
 ## 2026-11-17 — SPEC-014: baja de teléfonos, conciliación y catálogo en el panel
 **Spec:** SPEC-014
 **Hecho:** Spec, ADR-0008, plan y tareas aprobados; T1–T17. Backend: migración 0008 (`devices.revoked_at`, `stock_leases.quota_reported`, `sale_items.lease_id` sin FK, `admin_audit`); `releaseRevokedLeases` (cada 60 s y al abrir vistas del panel) y cierre tardío en `closeLeases`; `adminDevicesService`, `adminReconciliationService`, `adminCatalogService`, `adminAuditService` (`withAudit` con `request_id`); `lease_id` opcional en la sync; `stockService` suma los `expired`. App: migración v6, tope sin red en `AVAILABLE_SQL`, `CONSUME_QUOTA_SQL` (`returning id`) y Dashboard; `renew_at` desde el inicio de la petición; pestañas Teléfonos y Conciliar, `ProductFormSheet` en Stock, registro de cambios en Cuenta.

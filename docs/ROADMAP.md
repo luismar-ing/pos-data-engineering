@@ -23,14 +23,16 @@ Objetivo: vender sin red sin sobrevender.
 - SPEC-009 Edge Analytics (Burn Rate, Runout Time, top productos)
 - SPEC-010 Recibos QR offline
 
-## Fase 4 — Endurecimiento y demo  ⏳ en curso
+## Fase 4 — Endurecimiento y demo  ✅ cerrada
 - SPEC-011 Corte de red con dos dispositivos y reintentos de sync ✅
 - SPEC-012 Rediseño visual "Señalética de feria" ✅
-- Pruebas de corte de red con ≥ 2 dispositivos concurrentes.
-- Pruebas de reintento de sync (duplicados, lotes parciales).
-- Datos semilla y guion de demo.
+- SPEC-015 Datos semilla y guion de demo ✅ (`npm run demo:reset`, `docs/demo/guion.md`)
+- Pruebas de corte de red con ≥ 2 dispositivos y de reintentos de sync: en SPEC-011.
 
-## Fase 5 — Administración  ⬜ por iniciar
+## Fase 5 — Administración  ✅ cerrada
 Objetivo: que el administrador vea y controle el evento desde la app, con login.
-- SPEC-013 Panel de administración: rol, login, ventas y stock (🚧 en curso)
-- SPEC-014 Panel de administración: dispositivos, conciliación y catálogo (📝 Draft; incluye el tope sin red de 30 min, que cambia SPEC-005 P3 y requiere ADR)
+- SPEC-013 Panel de administración: rol, login, ventas y stock ✅
+- SPEC-014 Panel de administración: dispositivos, conciliación y catálogo ✅ (tope sin red de 30 min, ADR-0008)
+
+## Después
+Todas las fases cerradas (2026-11-22). Pendientes fuera de fase en `TECH_DEBT.md`: pruebas con el iPhone (TD-031, TD-034) y HTTPS antes de usar el panel fuera de la red local (TD-032).
