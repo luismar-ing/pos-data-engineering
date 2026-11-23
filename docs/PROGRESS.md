@@ -10,7 +10,7 @@ SPEC-001 está terminada y verificada, también en teléfono: app y backend comp
 
 ## Repositorio
 
-Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Rama de trabajo actual: `spec/016-entrega` (sale de `main`). Render despliega desde esa rama hasta que se fusione; después, cambiarla a `main` en el Blueprint.
+Monorepo en `POS_DE_APP/` (ADR-0004), en GitHub como `luismar-ing/pos-data-engineering`. Todo está fusionado en `main` (SPEC-016, #14); no hay rama de trabajo abierta. El Blueprint de Render despliega desde `main`.
 
 ## pos-app
 
