@@ -12,6 +12,13 @@ Una entrada por sesión de trabajo, la más reciente arriba. Formato:
 
 ---
 
+## 2026-11-22 — SPEC-016: entrega (Render, APK, bitácora de IA y diario de decisiones)
+**Spec:** SPEC-016
+**Hecho:** Spec, plan, tareas y ADR-0009 aprobados; T1–T8. Backend: `initDemo` y `demo-init` (carga la demo solo con la base vacía; crea el administrador solo si no existe), `render.yaml`. App: nombre "POS-DE" y paquete `com.luismaring.posde`; `android/` e `ios/` ignorados. Docs: `BITACORA_IA.md`, `DIARIO_DECISIONES.md`, README con ligas e instrucciones. Release `v1.0.0` con `pos-de-v1.0.0.apk` (66 MB; arm64-v8a, armeabi-v7a y x86_64).
+**Verificación:** backend `npm test` 100/100, `tsc` ok. El usuario creó el Blueprint en Render (rama `spec/016-entrega`); `/health` 200 en 0.3–0.5 s y `/catalogo` con 20 productos. El APK en el emulador `pos_pixel` abre sin Expo Go, se registra, recibe préstamos de Render y la venta de prueba llega (0 por enviar). La descarga del Release responde 200.
+**Decisiones:** Render con Blueprint (una cuenta, sin copiar a mano la URL con contraseña) en vez de Render + Neon; base llamada `posde` para que el guardián de demo la acepte (es un ambiente de demo, ADR-0009). Compilar en Windows exigió `LongPathsEnabled` (lo activó el usuario) y CMake 3.31.6 con ninja 1.12; `subst`, `buildStagingDirectory` y `CMAKE_OBJECT_PATH_MAX` no bastaron (TD-037).
+**Bloqueos / pendientes:** el usuario confirma el panel con la contraseña de `demo` y se la entrega al profesor por fuera del repo. Tras fusionar, cambiar la rama del Blueprint a `main`. TD-036 (barra de estado). Ensayo con el iPhone (TD-031, TD-034).
+
 ## 2026-11-22 — SPEC-015: datos semilla y guion de demo (cierre del proyecto)
 **Spec:** SPEC-015
 **Hecho:** Verificación inicial: backend 95/95 y app 70/70, `tsc` ok en los dos. Spec, plan y tareas aprobados; T1–T6. `src/dev/demo.ts` (`DEMO_PRODUCTS`, `demoHistory`, `resetDemo`), comando `demo-reset` y `npm run demo:reset`, `test/demo.test.ts` (CA-1..CA-4), `docs/demo/guion.md`. Roadmap: fases 4 y 5 cerradas.

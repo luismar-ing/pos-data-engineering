@@ -21,6 +21,24 @@ POS móvil offline-first con Stock Leasing, Edge Analytics y Batch ETL. Visión 
 
 Límites del servidor gratuito (ADR-0009): se duerme tras 15 min sin uso y su base de datos vence a los 30 días de creada.
 
+### Recompilar el APK (Windows)
+
+Las rutas de C++ de la compilación pasan de 260 caracteres. Hace falta lo siguiente una sola vez:
+- `LongPathsEnabled = 1` en `HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem` (PowerShell como administrador);
+- CMake 3.31.6 del SDK de Android, que trae ninja 1.12 (`sdkmanager "cmake;3.31.6"`).
+
+```powershell
+cd pos-app
+npx expo prebuild -p android --clean
+Add-Content android\app\build.gradle 'android.externalNativeBuild.cmake.version = "3.31.6"'
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+$env:EXPO_PUBLIC_API_URL = 'https://posde-backend.onrender.com'
+$env:NODE_ENV = 'production'
+cd android; .\gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+```
+
+El APK queda en `pos-app/android/app/build/outputs/apk/release/app-release.apk`. `expo prebuild` cambia los scripts `android` e `ios` de `package.json`: no los commitees.
+
 | Carpeta | Contenido |
 |---|---|
 | `pos-app/` | App móvil (Expo 58, React Native 0.88, expo-sqlite) |
