@@ -1,0 +1,28 @@
+# SPEC-016 / ADR-0009: backend de demo en Render (Blueprint). Ambiente de demo, no de producción.
+# La contraseña del administrador (ADMIN_PASSWORD) se escribe en el panel de Render al crear el Blueprint; nunca en el repo.
+databases:
+  - name: posde-db
+    plan: free
+    databaseName: posde # el nombre habilita demo-init y demo:reset (assertDevDatabase)
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: posde-backend
+    runtime: node
+    plan: free
+    rootDir: pos-backend
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/db/cli.js migrate && node dist/db/cli.js demo-init && node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DB_URL
+        fromDatabase:
+          name: posde-db
+          property: connectionString
+      - key: ADMIN_USERNAME
+        value: demo
+      - key: ADMIN_PASSWORD
+        sync: false

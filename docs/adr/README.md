@@ -12,3 +12,4 @@ Una decisión de arquitectura = un archivo `NNNN-titulo.md` (plantilla: [0000-te
 | [0006](0006-errores-y-migraciones-backend.md) | Formato único de errores y runner de migraciones propio | Aceptado |
 | [0007](0007-autenticacion-administrador.md) | Autenticación de administrador | Aceptado |
 | [0008](0008-tope-sin-red-y-baja-de-dispositivo.md) | Tope sin red de 30 min y devolución de la cuota al dar de baja un dispositivo | Aceptado |
+| [0009](0009-despliegue-render-y-apk.md) | Backend de demo en Render y APK compilado en local | Aceptado |

@@ -1,7 +1,7 @@
-// Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|demo-reset|report|admin-set <usuario>
+// Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|demo-reset|demo-init|report|admin-set <usuario>
 import type { Pool } from 'pg';
 import { config } from '../config.js';
-import { resetDemo } from '../dev/demo.js';
+import { initDemo, resetDemo } from '../dev/demo.js';
 import { assertDevDatabase, resetScenario } from '../dev/scenario.js';
 import { stockReport, type StockStatus } from '../services/stockService.js';
 import { setAdmin } from '../services/adminAuthService.js';
@@ -49,6 +49,13 @@ async function demoResetCommand(p: Pool) {
     console.log(`demo: lista en ${Date.now() - started} ms (20 productos, Hot dog en 10, historial de "Caja 2 (demo)"; teléfonos activos)`);
 }
 
+// SPEC-016: arranque en Render (ADR-0009). La contraseña llega por ADMIN_PASSWORD y no se imprime.
+async function demoInitCommand(p: Pool) {
+    assertDevDatabase(config.dbUrl);
+    const { demoLoaded, adminCreated } = await initDemo(p, { username: process.env.ADMIN_USERNAME, password: process.env.ADMIN_PASSWORD });
+    console.log(`demo-init: ${demoLoaded ? 'demo cargada' : 'la base ya tenía productos'}; ${adminCreated ? `administrador "${process.env.ADMIN_USERNAME}" creado` : 'sin administrador nuevo'}`);
+}
+
 // SPEC-013 RF-9: la contraseña llega por ADMIN_PASSWORD, nunca por argumentos (no queda en el historial del shell).
 async function adminSetCommand(p: Pool) {
     const username = process.argv[3] ?? '';
@@ -61,13 +68,14 @@ const commands: Record<string, (p: Pool) => Promise<unknown>> = {
     seed,
     'reset-scenario': resetCommand,
     'demo-reset': demoResetCommand,
+    'demo-init': demoInitCommand,
     report: reportCommand,
     'admin-set': adminSetCommand,
 };
 const run = commands[process.argv[2] ?? ''];
 
 if (!run) {
-    console.error('Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|demo-reset|report|admin-set <usuario>');
+    console.error('Uso: tsx src/db/cli.ts migrate|seed|reset-scenario|demo-reset|demo-init|report|admin-set <usuario>');
     process.exit(1);
 }
 

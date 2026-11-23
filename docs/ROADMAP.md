@@ -35,4 +35,4 @@ Objetivo: que el administrador vea y controle el evento desde la app, con login.
 - SPEC-014 Panel de administración: dispositivos, conciliación y catálogo ✅ (tope sin red de 30 min, ADR-0008)
 
 ## Después
-Todas las fases cerradas (2026-11-22). Pendientes fuera de fase en `TECH_DEBT.md`: pruebas con el iPhone (TD-031, TD-034) y HTTPS antes de usar el panel fuera de la red local (TD-032).
+Todas las fases cerradas (2026-11-22). Entrega (SPEC-016): backend de demo en Render, APK en el Release `v1.0.0`, bitácora de IA y diario de decisiones. Pendientes en `TECH_DEBT.md`: pruebas con el iPhone (TD-031, TD-034).

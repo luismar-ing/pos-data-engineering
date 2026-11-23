@@ -9,7 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native (SPEC-016: android/ lo genera expo prebuild para el APK)
+/android
+/ios
 .kotlin/
 *.orig.*
 *.jks
